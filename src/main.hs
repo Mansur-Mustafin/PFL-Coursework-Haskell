@@ -21,6 +21,9 @@ type Stack = (Pilha (Either String Integer))
 createEmptyStack :: Stack
 createEmptyStack = Pilha.empty
 
+createEmptyState :: State
+createEmptyState = Map.empty
+
 
 stack2Str :: Stack -> String
 stack2Str pilha 
@@ -34,9 +37,6 @@ stack2Str pilha
     showEither _ = error "Run-time error"
 
 
-createEmptyState :: State
-createEmptyState = Map.empty
-
 state2Str :: State -> String
 state2Str state = if (Map.isEmpty state) then "" 
                   else init . concat $ map showPair (map2List state)
@@ -48,7 +48,8 @@ state2Str state = if (Map.isEmpty state) then ""
 
 run :: (Code, Stack, State) -> (Code, Stack, State)
 run ([], stack, storage) = ([], stack, storage) -- base case
-run (Push int:code, stack, storage) = run (code, push (Right int) stack, storage) -- TODO: push True?
+
+run (Push int:code, stack, storage) = run (code, push (Right int) stack, storage)
 
 run (Add:code, stack, storage) = run (code, push (Right (v2+v1)) (pop . pop $ stack), storage)
  where 
@@ -63,26 +64,31 @@ run (Sub:code, stack, storage) = run (code, push (Right (v1-v2)) (pop . pop $ st
   (v1, v2) = get2RightInt stack
 
 run (Tru:code, stack, storage) = run (code, push (Left "tt") stack, storage)
+
 run (Fals:code, stack, storage) = run (code, push (Left "ff") stack, storage)
 
 run (Equ:code, stack, storage)
- | top stack == top (pop stack) = run (code, push (Left "tt") (pop . pop $ stack), storage)
- | otherwise = run (code, push (Left "ff") (pop . pop $ stack), storage)
+ | isSameType && v1 == v2 = run (code, push (Left "tt") (pop . pop $ stack), storage)
+ | isSameType = run (code, push (Left "ff") (pop . pop $ stack), storage)
+ | otherwise = error "Run-time error"
+ where 
+  v1 = top stack 
+  v2 = top (pop stack)
+  isSameType = (isLeft v1 && isLeft v2) || (isRight v1 && isRight v2)
 
 run (Le:code, stack, storage)
- | v1 < v2 = run (code, push (Left "tt") (pop . pop $ stack), storage)
+ | v1 <= v2 = run (code, push (Left "tt") (pop . pop $ stack), storage)
  | otherwise = run (code, push (Left "ff") (pop . pop $ stack), storage)
  where (v1, v2) = get2RightInt stack 
 
 run (And:code, stack, storage)
  | v1 == "tt" && v2 == "tt" = run (code, push (Left "tt") (pop . pop $ stack), storage)
- | topIsLeft stack = run (code, push (Left "ff") (pop . pop $ stack), storage)
- | otherwise = error "Run-time error"
+ | otherwise = run (code, push (Left "ff") (pop . pop $ stack), storage)
  where (v1, v2) = get2LeftString stack
 
 run (Neg:code, stack, storage)
- | isLeft (top stack) && fromLeft "default" (top stack) == "ff" = run (code, push (Left "tt") (pop stack), storage)
- | isLeft (top stack) && fromLeft "default" (top stack) == "tt" = run (code, push (Left "ff") (pop stack), storage)
+ | top stack == Left "ff" = run (code, push (Left "tt") (pop stack), storage)
+ | top stack == Left "tt" = run (code, push (Left "ff") (pop stack), storage)
  | otherwise = error "Run-time error"
 
 run (Fetch key:code, stack, storage)
@@ -90,28 +96,17 @@ run (Fetch key:code, stack, storage)
  | otherwise = error "Run-time error"
  where value = find key storage
 
-run (Store key:code, stack, storage) = run (code, pop stack, insert key value storage)
- where value = top stack
+run (Store key:code, stack, storage) = run (code, pop stack, insert key (top stack) storage)
 
 run (Noop:code, stack, storage) = run (code, stack, storage)
 
 run (Branch c1 c2:code, stack, storage)
- | isLeft (top stack) && fromLeft "default" (top stack) == "tt" = run (c1++code, pop stack, storage)
- | isLeft (top stack) && fromLeft "default" (top stack) == "ff" = run (c2++code, pop stack, storage)
+ | top stack == Left "tt" = run (c1++code, pop stack, storage)
+ | top stack == Left "ff" = run (c2++code, pop stack, storage)
  | otherwise = error "Run-time error"
 
 run (Loop c1 c2:code, stack, storage) = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code , stack, storage)
 
-
--- To help you test your assembler
-testAssembler :: Code -> (String, String)
-testAssembler code = (stack2Str stack, state2Str state)
-  where (_,stack,state) = run(code, createEmptyStack, createEmptyState)
-
--- Examples:
--- testAssembler [Push 1,Push 2,And]: "Run-time error"
--- testAssembler [Tru,Tru,Store "y", Fetch "x",Tru]: "Run-time error"
--- testAssembler [Push 10,Push 2,Branch [Add] [Sub]] : "Run-time error"
 
 -- Part 2
 
@@ -146,6 +141,10 @@ parse = undefined -- TODO
 
 
 -- Aux function to tests
+-- Examples:
+-- testAssembler [Push 1,Push 2,And]: "Run-time error"
+-- testAssembler [Tru,Tru,Store "y", Fetch "x",Tru]: "Run-time error"
+-- testAssembler [Push 10,Push 2,Branch [Add] [Sub]] : "Run-time error"
 testCasesCompile :: [([Inst], (String, String))]
 testCasesCompile = [
     ([Push 10,Push 4,Push 3,Sub,Mult], ("-10","")),
@@ -160,6 +159,11 @@ testCasesCompile = [
     ([Push 10,Push 2,Tru,Branch [Add] [Sub]], ("12","")),
     ([Push 10,Push 2,Fals,Branch [Add] [Sub]], ("-8",""))
     ]
+
+-- To help you test your assembler
+testAssembler :: Code -> (String, String)
+testAssembler code = (stack2Str stack, state2Str state)
+  where (_,stack,state) = run(code, createEmptyStack, createEmptyState)
 
 runTest :: (Int, ([Inst], (String, String))) -> IO ()
 runTest (index, (input, expected)) 
