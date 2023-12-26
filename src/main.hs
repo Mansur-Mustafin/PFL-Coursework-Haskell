@@ -26,9 +26,9 @@ createEmptyState = Map.empty
 
 
 stack2Str :: Stack -> String
-stack2Str pilha 
+stack2Str pilha
  | Pilha.isEmpty pilha = ""
- | Pilha.isEmpty (pop pilha) = showEither (top pilha)                             -- case of last element
+ | Pilha.isEmpty (pop pilha) = showEither (top pilha)
  | otherwise = showEither (top pilha) ++ "," ++ stack2Str (pop pilha)
  where 
     showEither (Left "tt") = "True"
@@ -67,6 +67,7 @@ run (Tru:code, stack, storage) = run (code, push (Left "tt") stack, storage)
 
 run (Fals:code, stack, storage) = run (code, push (Left "ff") stack, storage)
 
+-- TODO simplify this 
 run (Equ:code, stack, storage)
  | isSameType && v1 == v2 = run (code, push (Left "tt") (pop . pop $ stack), storage)
  | isSameType = run (code, push (Left "ff") (pop . pop $ stack), storage)
@@ -139,12 +140,16 @@ parse = undefined -- TODO
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
 
 
+-- ####################################################################################################################
+-- #                                                                                                                  #
+-- #                                                      Tests                                                       #
+-- #                                                                                                                  #
+-- ####################################################################################################################
 
--- Aux function to tests
 -- Examples:
--- testAssembler [Push 1,Push 2,And]: "Run-time error"
--- testAssembler [Tru,Tru,Store "y", Fetch "x",Tru]: "Run-time error"
--- testAssembler [Push 10,Push 2,Branch [Add] [Sub]] : "Run-time error"
+-- testAssembler [Push 1,Push 2,And]:                     "Run-time error"
+-- testAssembler [Tru,Tru,Store "y", Fetch "x",Tru]:      "Run-time error"
+-- testAssembler [Push 10,Push 2,Branch [Add] [Sub]] :    "Run-time error"
 testCasesCompile :: [([Inst], (String, String))]
 testCasesCompile = [
     ([Push 10,Push 4,Push 3,Sub,Mult], ("-10","")),

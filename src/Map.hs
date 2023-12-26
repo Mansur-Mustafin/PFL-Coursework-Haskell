@@ -1,5 +1,7 @@
 module Map (Map, empty, insert, delete, find, map2List, isEmpty) where 
 
+-- TODO add AVL
+-- TODO add garbage collection
 data Map k v = Empty | Node (k,v) (Map k v) (Map k v) deriving Show
 
 empty :: Map k v

@@ -21,7 +21,7 @@ empty :: Pilha a
 empty = Stk []
 
 isEmpty :: Pilha a -> Bool
-isEmpty (Stk [])= True
+isEmpty (Stk []) = True
 isEmpty (Stk _) = False
 
 -- aux functions
