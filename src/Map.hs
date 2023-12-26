@@ -1,12 +1,11 @@
-module Map (Map, empty, insert, delete, find) where 
-
+module Map (Map, empty, insert, delete, find, map2List) where 
 
 data Map k v = Empty | Node (k,v) (Map k v) (Map k v) deriving Show
 
 empty :: Map k v
 empty = Empty
 
-
+-- insert 
 insert :: (Ord k) => k -> v -> Map k v -> Map k v 
 insert k v Empty = Node (k,v) Empty Empty
 insert k v (Node (k1,v1) l r)
@@ -14,7 +13,7 @@ insert k v (Node (k1,v1) l r)
  | k < k1 = Node (k1,v1) (insert k v l) r
  | otherwise = Node (k,v) l r 
 
-
+-- find 
 find :: (Ord k) => k -> Map k v -> Maybe v
 find k Empty = Nothing
 find k (Node (k1,v1) l r)
@@ -22,7 +21,7 @@ find k (Node (k1,v1) l r)
  | k > k1 = find k r 
  | otherwise = Just v1 
 
-
+-- delete
 maisEsq :: Map k v -> (k, v) 
 maisEsq (Node (k, v) Empty _) = (k, v) 
 maisEsq (Node _ esq _) = maisEsq esq
@@ -39,3 +38,8 @@ delete k (Node (k1, v1) esq dir)
  | k > k1 = Node (k1, v1) esq (delete k dir) 
  | k == k1 = let (zk, zv) = maisEsq dir 
           in Node (zk, zv) esq (delete zk dir) 
+
+
+map2List :: Map k v -> [(k,v)]
+map2List Empty = []
+map2List (Node (k,v) esq dir) = map2List esq ++ [(k,v)] ++ map2List dir

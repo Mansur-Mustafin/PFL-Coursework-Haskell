@@ -21,29 +21,25 @@ createEmptyStack = Pilha.empty
 
 
 stack2Str :: Stack -> String
-{-
-	stack2Str pilha = if (isEmpty (pop pilha)) then showEither (top pilha) 
-	                  else showEither (top pilha) ++ "," ++stack2Str (pop pilha)
-	 where 
-	  showEither (Left bool) = show bool
-	  showEither (Right int) = show int 
--}
-
-
 stack2Str pilha 
- | isEmpty (pop pilha) = showEither (top pilha)
- | otherwise = showEither (top pilha) ++ "," ++stack2Str (pop pilha)
+ | isEmpty pilha = "Empty Stack"
+ | isEmpty (pop pilha) = showEither (top pilha)                             -- case of last element
+ | otherwise = showEither (top pilha) ++ "," ++ stack2Str (pop pilha)
  where 
     showEither (Left bool) = show bool
     showEither (Right int) = show int 
 
 
-
 createEmptyState :: State
 createEmptyState = ([], createEmptyStack, Map.empty) 
 
--- state2Str :: State -> String
-state2Str = undefined -- TODO
+
+state2Str :: State -> String
+state2Str (_, _, storage) = init . concat $ map showPair (map2List storage)
+ where 
+  showPair (k, Left bool) = k ++ "=" ++ show bool ++ ","
+  showPair (k, Right int) = k ++ "=" ++ show int ++ ","
+
 
 -- run :: (Code, Stack, State) -> (Code, Stack, State)
 run = undefined -- TODO
