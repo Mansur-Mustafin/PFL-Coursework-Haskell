@@ -1,19 +1,23 @@
-module Map (Map, empty, insert, delete, find, map2List) where 
+module Map (Map, empty, insert, delete, find, map2List, isEmpty) where 
 
 data Map k v = Empty | Node (k,v) (Map k v) (Map k v) deriving Show
 
 empty :: Map k v
 empty = Empty
 
--- insert 
-insert :: (Ord k) => k -> v -> Map k v -> Map k v 
+isEmpty :: Map k v -> Bool 
+isEmpty Empty = True 
+isEmpty _ = False
+
+-- insert
+insert :: (Ord k) => k -> v -> Map k v -> Map k v
 insert k v Empty = Node (k,v) Empty Empty
 insert k v (Node (k1,v1) l r)
  | k > k1 = Node (k1,v1) l (insert k v r)
  | k < k1 = Node (k1,v1) (insert k v l) r
- | otherwise = Node (k,v) l r 
+ | otherwise = Node (k,v) l r
 
--- find 
+-- find
 find :: (Ord k) => k -> Map k v -> Maybe v
 find k Empty = Nothing
 find k (Node (k1,v1) l r)
