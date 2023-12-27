@@ -52,7 +52,7 @@ height (Node _ esq dir bf) = 1 + max (height esq) (height dir)
 isBalanced :: Map k v -> Bool
 isBalanced Empty = True 
 isBalanced (Node (k,v) esq dir bf) 
- | not (isBalanced esq || isBalanced dir) = False
+ | not (isBalanced esq && isBalanced dir) = False
  | abs ((height esq) - (height dir)) > 1 = False
  | otherwise = True 
 
