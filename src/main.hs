@@ -113,15 +113,53 @@ run (Loop c1 c2:code, stack, storage) = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [
 
 -- TODO: Define the types Aexp, Bexp, Stm and Program
 
--- compA :: Aexp -> Code
-compA = undefined -- TODO
 
--- compB :: Bexp -> Code
-compB = undefined -- TODO
+data Aexp
+  = IntLitA Integer
+  | VarLitA String
+  | AddExp Aexp Aexp
+  | SubExp Aexp Aexp
+  | MultExp Aexp Aexp
+
+data Bexp
+  = BoolLit Bool
+  | VarLitB String
+  | AndExp Bexp Bexp
+  | NegExp Bexp
+  | EquExpInt Aexp Aexp
+  | EquExpBool Bexp Bexp
+  | LeExp Integer Integer
+
+data Stm
+  = StoreStmA String Aexp
+  | StoreStmB String Bexp
+  | ParenthStm [Stm]
+  | IfStm Bexp Stm Stm 
+  | WhileStm Bexp Stm
+
+type Program = [Stm]
+
+compA :: Aexp -> Code
+compA (IntLitA n) = [Push n]
+compA (VarLitA var) = [Fetch var]
+compA (AddExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Add]
+compA (SubExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Sub]
+compA (MultExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Mult]
+
+compB :: Bexp -> Code
+compB (BoolLit val) = if val then [Tru] else [Fals]
+compB (VarLitB var) = [Fetch var]
+compB (AndExp bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [And]
+compB (NegExp bexp) = compB bexp ++ [Neg]
+compB (EquExpInt aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Equ]
+compB (EquExpBool bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [Equ]
+compB (LeExp n1 n2) = [Push n2] ++ [Push n1] ++ [Le]
+
 
 -- compile :: Program -> Code
 compile = undefined -- TODO
 
+-- The parser needs to take the precedence of operators into account
 -- parse :: String -> Program
 parse = undefined -- TODO
 
