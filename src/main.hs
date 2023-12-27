@@ -14,8 +14,8 @@ data Inst =
   Branch Code Code | Loop Code Code
   deriving Show
 type Code = [Inst]
-type State = (Map String (Either String Integer))
-type Stack = (Pilha (Either String Integer))
+type State = (Map String (Either Bool Integer))
+type Stack = (Pilha (Either Bool Integer))
 
 
 createEmptyStack :: Stack
@@ -31,18 +31,15 @@ stack2Str pilha
  | Pilha.isEmpty (pop pilha) = showEither (top pilha)
  | otherwise = showEither (top pilha) ++ "," ++ stack2Str (pop pilha)
  where 
-    showEither (Left "tt") = "True"
-    showEither (Left "ff") = "False"
-    showEither (Right int) = show int 
-    showEither _ = error "Run-time error"
+    showEither (Left bool) = show bool
+    showEither (Right int) = show int
 
 
 state2Str :: State -> String
 state2Str state = if (Map.isEmpty state) then "" 
                   else init . concat $ map showPair (map2List state)
  where 
-  showPair (k, Left "tt") = k ++ "=True,"
-  showPair (k, Left "ff") = k ++ "=False,"
+  showPair (k, Left bool) = k ++ "=" ++ show bool ++ ","
   showPair (k, Right int) = k ++ "=" ++ show int ++ ","
 
 
@@ -51,45 +48,46 @@ run ([], stack, storage) = ([], stack, storage) -- base case
 
 run (Push int:code, stack, storage) = run (code, push (Right int) stack, storage)
 
-run (Add:code, stack, storage) = run (code, push (Right (v2+v1)) (pop . pop $ stack), storage)
+run (Add:code, stack, storage) = run (code, push (Right (v2+v1)) newStack, storage)
  where 
-  (v1, v2) = get2RightInt stack
+  (v1, v2, newStack) = get2RightInt stack
 
-run (Mult:code, stack, storage) = run (code, push (Right (v2*v1)) (pop . pop $ stack), storage)
+run (Mult:code, stack, storage) = run (code, push (Right (v2*v1)) newStack, storage)
  where 
-  (v1, v2) = get2RightInt stack
+  (v1, v2, newStack) = get2RightInt stack
 
-run (Sub:code, stack, storage) = run (code, push (Right (v1-v2)) (pop . pop $ stack), storage)
+run (Sub:code, stack, storage) = run (code, push (Right (v1-v2)) newStack, storage)
  where 
-  (v1, v2) = get2RightInt stack
+  (v1, v2, newStack) = get2RightInt stack
 
-run (Tru:code, stack, storage) = run (code, push (Left "tt") stack, storage)
+run (Tru:code, stack, storage) = run (code, push (Left True) stack, storage)
 
-run (Fals:code, stack, storage) = run (code, push (Left "ff") stack, storage)
+run (Fals:code, stack, storage) = run (code, push (Left False) stack, storage)
 
 -- TODO simplify this 
 run (Equ:code, stack, storage)
- | isSameType && v1 == v2 = run (code, push (Left "tt") (pop . pop $ stack), storage)
- | isSameType = run (code, push (Left "ff") (pop . pop $ stack), storage)
+ | isSameType v1 v2 = run (code, push (Left (v1 == v2)) (pop . pop $ stack), storage)
  | otherwise = error "Run-time error"
  where 
-  v1 = top stack 
-  v2 = top (pop stack)
-  isSameType = (isLeft v1 && isLeft v2) || (isRight v1 && isRight v2)
+  (v1, v2) = (top stack, top (pop stack))
+  isSameType (Left _) (Left _) = True
+  isSameType (Right _) (Right _) = True
+  isSameType _ _ = False
 
 run (Le:code, stack, storage)
- | v1 <= v2 = run (code, push (Left "tt") (pop . pop $ stack), storage)
- | otherwise = run (code, push (Left "ff") (pop . pop $ stack), storage)
- where (v1, v2) = get2RightInt stack 
+ | v1 <= v2 = run (code, push (Left True) newStack, storage)
+ | otherwise = run (code, push (Left False) newStack, storage)
+ where (v1, v2, newStack) = get2RightInt stack 
 
 run (And:code, stack, storage)
- | v1 == "tt" && v2 == "tt" = run (code, push (Left "tt") (pop . pop $ stack), storage)
- | otherwise = run (code, push (Left "ff") (pop . pop $ stack), storage)
- where (v1, v2) = get2LeftString stack
+ | v1 && v2 = run (code, push (Left True) newStack, storage)
+ | otherwise = run (code, push (Left False) newStack, storage)
+ where (v1, v2, newStack) = get2LeftString stack
 
 run (Neg:code, stack, storage)
- | top stack == Left "ff" = run (code, push (Left "tt") (pop stack), storage)
- | top stack == Left "tt" = run (code, push (Left "ff") (pop stack), storage)
+ | isLeft (top stack) = 
+    let Left bool = top stack 
+    in run (code, push (Left (not bool)) (pop stack), storage)
  | otherwise = error "Run-time error"
 
 run (Fetch key:code, stack, storage)
@@ -102,12 +100,14 @@ run (Store key:code, stack, storage) = run (code, pop stack, insert key (top sta
 run (Noop:code, stack, storage) = run (code, stack, storage)
 
 run (Branch c1 c2:code, stack, storage)
- | top stack == Left "tt" = run (c1++code, pop stack, storage)
- | top stack == Left "ff" = run (c2++code, pop stack, storage)
- | otherwise = error "Run-time error"
+ | exctract (top stack) = run (c1++code, pop stack, storage)
+ | otherwise = run (c2++code, pop stack, storage)
+ where
+  exctract (Left flag) = flag
+  exctract _ = error "Run-time error"
 
-run (Loop c1 c2:code, stack, storage) = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code , stack, storage)
 
+run (Loop c1 c2:code, stack, storage) = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code, stack, storage)
 
 -- Part 2
 
