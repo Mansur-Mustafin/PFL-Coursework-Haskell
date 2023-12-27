@@ -115,7 +115,7 @@ run (Loop c1 c2:code, stack, storage) = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [
 
 
 data Aexp
-  = IntLitA Integer
+  = IntLit Integer
   | VarLitA String
   | AddExp Aexp Aexp
   | SubExp Aexp Aexp
@@ -128,7 +128,7 @@ data Bexp
   | NegExp Bexp
   | EquExpInt Aexp Aexp
   | EquExpBool Bexp Bexp
-  | LeExp Integer Integer
+  | LeExp Aexp Aexp
 
 data Stm
   = StoreStmA String Aexp
@@ -140,7 +140,7 @@ data Stm
 type Program = [Stm]
 
 compA :: Aexp -> Code
-compA (IntLitA n) = [Push n]
+compA (IntLit n) = [Push n]
 compA (VarLitA var) = [Fetch var]
 compA (AddExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Add]
 compA (SubExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Sub]
@@ -153,7 +153,7 @@ compB (AndExp bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [And]
 compB (NegExp bexp) = compB bexp ++ [Neg]
 compB (EquExpInt aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Equ]
 compB (EquExpBool bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [Equ]
-compB (LeExp n1 n2) = [Push n2] ++ [Push n1] ++ [Le]
+compB (LeExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Le]
 
 
 -- compile :: Program -> Code
@@ -176,6 +176,20 @@ parse = undefined -- TODO
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
+
+-- Compiler A
+-- (AddExp (IntLit 1) (VarLitA "x"), [Fetch "x", Push 1, Add])
+-- (SubExp (IntLit 1) (VarLitA "x"), [Fetch "x", Push 1, Sub])
+-- (MultExp (IntLit 1) (VarLitA "x"), [Fetch "x", Push 1, Mult])
+-- (AddExp (IntLit 2) (MultExp (IntLit 7) (IntLit 13)), [Push 13, Push 7, Mult, Push 2, Add])
+-- (AddExp (IntLit 2) (MultExp (VarLitA "x") (VarLitA "y")), [Fetch "y", Fetch "x", Mult, Push 2, Add])
+
+-- Compiler B
+-- (NegExp (BoolLit True), [Tru, Neg])
+-- (AndExp (BoolLit True) (BoolLit False), [Fals, Tru, And])
+-- (AndExp (EquExpInt (AddExp (IntLit 1) (IntLit 2)) (IntLit 2)) (BoolLit False), [Fals, Push 2, Push 2, Push 1, Add, Equ, And])
+-- (EquExpBool (LeExp (IntLit 2) (IntLit 1)) (BoolLit False), [Fals, Push 1, Push 2, Le, Equ])
+
 
 
 -- ####################################################################################################################
