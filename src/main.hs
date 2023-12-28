@@ -1,6 +1,7 @@
 -- PFL 2023/24 - Haskell practical assignment quickstart
 -- Updated on 15/12/2023
 
+import Data.Char (isDigit, isLetter, isSpace, isLower, isUpper)
 import Data.Either (isLeft, isRight, fromLeft, fromRight)
 import Data.Maybe (isJust, fromJust)
 import Pilha
@@ -124,6 +125,27 @@ compile = undefined -- TODO
 
 -- parse :: String -> Program
 parse = undefined -- TODO
+
+lexer :: String -> [String]
+lexer "" = []
+lexer (curr1:curr2:rest) 
+  | elem (curr1:[curr2]) ["<=", ":=", "=="] = (curr1:[curr2]) : lexer rest
+lexer (curr:rest)
+  | elem curr ['(', ')', '+', '-', '*', ';', '='] = [curr] : lexer rest
+  | isDigit curr = let restStr = dropWhile isDigit rest
+                       nextChar = head restStr
+                   in if not (nextChar == '_' || isLetter nextChar)
+                      then takeWhile isDigit (curr:rest) : lexer (dropWhile isDigit rest)
+                      else error "Variable names cannot start with digits"
+  | isLower curr = let variableFilter char = char == '_' || isLetter char || isDigit char
+                   in takeWhile variableFilter (curr:rest) : lexer (dropWhile variableFilter rest)
+  | isUpper curr = let str = takeWhile isLower rest
+                   in if curr:str == "True" || curr:str == "False"
+                      then (curr:str) : lexer (dropWhile isLower rest)
+                      else error "Variable names cannot start with uppercase characters"
+  | isSpace curr = lexer (dropWhile isSpace rest)
+  | otherwise = error "Invalid token"
+
 
 -- To help you test your parser
 -- testParser :: String -> (String, String)
