@@ -1,58 +1,17 @@
 -- PFL 2023/24 - Haskell practical assignment quickstart
 -- Updated on 15/12/2023
 
-import Data.Char (isDigit, isLetter, isSpace, isLower, isUpper, digitToInt)
 import Data.List (span)
-import Data.Either (isLeft, isRight, fromLeft, fromRight)
-import Data.Maybe (isJust, fromJust)
 import Pilha
 import Map 
+import Lexer
+import Compile 
 
 -- Part 1
 
 -- Do not modify our definition of Inst and Code
-data Token
-  = PlusTok | MinusTok | TimesTok
-  | OpenTok | CloseTok | SemiColonTok
-  | AndTok | BoolEqTok | IntEqTok | LeTok | NotTok
-  | AssignTok
-  | WhileTok | DoTok
-  | IfTok | ThenTok | ElseTok
-  | IntTok Int | VarTok String | BoolTok Bool
-  deriving (Show) 
-
-data Aexp
-  = IntLit Integer
-  | VarLitA String
-  | AddExp Aexp Aexp
-  | SubExp Aexp Aexp
-  | MultExp Aexp Aexp
-
-data Bexp
-  = BoolLit Bool
-  | VarLitB String
-  | AndExp Bexp Bexp
-  | NegExp Bexp
-  | EquExpInt Aexp Aexp
-  | EquExpBool Bexp Bexp
-  | LeExp Aexp Aexp
-
-data Stm
-  = StoreStmA String Aexp
-  | StoreStmB String Bexp
-  | ParenthStm [Stm]    -- Check if this is necessary when we start doing parsing
-  | IfStm Bexp Stm Stm 
-  | WhileStm Bexp Stm
-
-type Program = [Stm]
-
-data Inst =
-  Push Integer | Add | Mult | Sub | Tru | Fals | Equ | Le | And | Neg | Fetch String | Store String | Noop |
-  Branch Code Code | Loop Code Code
-  deriving Show
-type Code = [Inst]
-type State = (Map String (Either String Integer))
-type Stack = (Pilha (Either String Integer))
+type State = (Map String (Either Bool Integer))
+type Stack = (Pilha (Either Bool Integer))
 
 
 createEmptyStack :: Stack
@@ -62,25 +21,24 @@ createEmptyState :: State
 createEmptyState = Map.empty
 
 
+showEither :: (Show a, Show b) => Either a b -> String
+showEither (Left bool) = show bool
+showEither (Right int) = show int
+
+
 stack2Str :: Stack -> String
 stack2Str pilha
  | Pilha.isEmpty pilha = ""
- | Pilha.isEmpty (pop pilha) = showEither (top pilha)
+ | Pilha.isEmpty $ pop pilha = showEither (top pilha)
  | otherwise = showEither (top pilha) ++ "," ++ stack2Str (pop pilha)
- where 
-    showEither (Left "tt") = "True"
-    showEither (Left "ff") = "False"
-    showEither (Right int) = show int 
-    showEither _ = error "Run-time error"
 
 
 state2Str :: State -> String
-state2Str state = if Map.isEmpty state then "" 
-                  else init $ concatMap showPair (map2List state)
+state2Str state 
+ | Map.isEmpty state = "" 
+ | otherwise = init . concat $ map showPair (map2List state)
  where 
-  showPair (k, Left "tt") = k ++ "=True,"
-  showPair (k, Left "ff") = k ++ "=False,"
-  showPair (k, Right int) = k ++ "=" ++ show int ++ ","
+  showPair (k, val) = k ++ "=" ++ showEither val ++ ","
 
 
 run :: (Code, Stack, State) -> (Code, Stack, State)
@@ -88,129 +46,100 @@ run ([], stack, storage) = ([], stack, storage) -- base case
 
 run (Push int:code, stack, storage) = run (code, push (Right int) stack, storage)
 
-run (Add:code, stack, storage) = run (code, push (Right (v2+v1)) (pop . pop $ stack), storage)
+run (Add:code, stack, storage) = run (code, push (Right (v2+v1)) newStack, storage)
  where 
-  (v1, v2) = get2RightInt stack
+  (v1, v2, newStack) = get2RightValues stack
 
-run (Mult:code, stack, storage) = run (code, push (Right (v2*v1)) (pop . pop $ stack), storage)
+run (Mult:code, stack, storage) = run (code, push (Right (v2*v1)) newStack, storage)
  where 
-  (v1, v2) = get2RightInt stack
+  (v1, v2, newStack) = get2RightValues stack
 
-run (Sub:code, stack, storage) = run (code, push (Right (v1-v2)) (pop . pop $ stack), storage)
+run (Sub:code, stack, storage) = run (code, push (Right (v1-v2)) newStack, storage)
  where 
-  (v1, v2) = get2RightInt stack
+  (v1, v2, newStack) = get2RightValues stack
 
-run (Tru:code, stack, storage) = run (code, push (Left "tt") stack, storage)
+run (Tru:code, stack, storage) = run (code, push (Left True) stack, storage)
 
-run (Fals:code, stack, storage) = run (code, push (Left "ff") stack, storage)
+run (Fals:code, stack, storage) = run (code, push (Left False) stack, storage)
 
--- TODO simplify this 
-run (Equ:code, stack, storage)
- | isSameType && v1 == v2 = run (code, push (Left "tt") (pop . pop $ stack), storage)
- | isSameType = run (code, push (Left "ff") (pop . pop $ stack), storage)
- | otherwise = error "Run-time error"
- where 
-  v1 = top stack 
-  v2 = top (pop stack)
-  isSameType = (isLeft v1 && isLeft v2) || (isRight v1 && isRight v2)
+run (Equ:code, stack, storage) =
+  case (top stack, top . pop $ stack) of
+    (Left v1, Left v2)   -> run (code, push (Left (v1 == v2)) (pop . pop $ stack), storage)
+    (Right v1, Right v2) -> run (code, push (Left (v1 == v2)) (pop . pop $ stack), storage)
+    _                    -> error "Run-time error"
 
 run (Le:code, stack, storage)
- | v1 <= v2 = run (code, push (Left "tt") (pop . pop $ stack), storage)
- | otherwise = run (code, push (Left "ff") (pop . pop $ stack), storage)
- where (v1, v2) = get2RightInt stack 
+ | v1 <= v2 = run (code, push (Left True) newStack, storage)
+ | otherwise = run (code, push (Left False) newStack, storage)
+ where (v1, v2, newStack) = get2RightValues stack 
 
 run (And:code, stack, storage)
- | v1 == "tt" && v2 == "tt" = run (code, push (Left "tt") (pop . pop $ stack), storage)
- | otherwise = run (code, push (Left "ff") (pop . pop $ stack), storage)
- where (v1, v2) = get2LeftString stack
+ | v1 && v2 = run (code, push (Left True) newStack, storage)
+ | otherwise = run (code, push (Left False) newStack, storage)
+ where (v1, v2, newStack) = get2LeftValues stack
 
-run (Neg:code, stack, storage)
- | top stack == Left "ff" = run (code, push (Left "tt") (pop stack), storage)
- | top stack == Left "tt" = run (code, push (Left "ff") (pop stack), storage)
- | otherwise = error "Run-time error"
+run (Neg:code, stack, storage) =
+  case top stack of
+    Left bool -> run (code, push (Left (not bool)) (pop stack), storage)
+    _         -> error "Run-time error"
 
-run (Fetch key:code, stack, storage)
- | isJust value = run (code, push (fromJust value) stack, storage)
- | otherwise = error "Run-time error"
- where value = find key storage
+run (Fetch key:code, stack, storage) = 
+  case find key storage of 
+    Just value -> run (code, push value stack, storage)
+    Nothing    -> error "Run-time error"
 
-run (Store key:code, stack, storage) = run (code, pop stack, insert key (top stack) storage)
+run (Store key:code, stack, storage) 
+ = run (code, pop stack, insert key (top stack) storage)
 
 run (Noop:code, stack, storage) = run (code, stack, storage)
 
-run (Branch c1 c2:code, stack, storage)
- | top stack == Left "tt" = run (c1++code, pop stack, storage)
- | top stack == Left "ff" = run (c2++code, pop stack, storage)
- | otherwise = error "Run-time error"
+run (Branch c1 c2:code, stack, storage) =
+  case top stack of
+    Left True  -> run (c1++code, pop stack, storage)
+    Left False -> run (c2++code, pop stack, storage)
+    _          -> error "Run-time error"
 
-run (Loop c1 c2:code, stack, storage) = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code , stack, storage)
+run (Loop c1 c2:code, stack, storage) 
+ = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code, stack, storage)
+
 
 
 -- Part 2
 
--- TODO: Define the types Aexp, Bexp, Stm and Program
-compile :: Program -> Code
-compile prog = concatMap compileStm prog
-
-compileStm :: Stm -> Code
-compileStm (StoreStmA var aexp) = compA aexp ++ [Store var]
-compileStm (StoreStmB var bexp) = compB bexp ++ [Store var]
-compileStm (ParenthStm stms) = concatMap compileStm stms
-compileStm (IfStm bexp stm1 stm2) = compB bexp ++ [Branch (compileStm stm1) (compileStm stm2)]
-compileStm (WhileStm bexp stm) = [Loop (compB bexp) (compileStm stm)]
-
-compA :: Aexp -> Code
-compA (IntLit n) = [Push n]
-compA (VarLitA var) = [Fetch var]
-compA (AddExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Add]
-compA (SubExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Sub]
-compA (MultExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Mult]
-
-compB :: Bexp -> Code
-compB (BoolLit val) = if val then [Tru] else [Fals]
-compB (VarLitB var) = [Fetch var]
-compB (AndExp bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [And]
-compB (NegExp bexp) = compB bexp ++ [Neg]
-compB (EquExpInt aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Equ]
-compB (EquExpBool bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [Equ]
-compB (LeExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Le]
-
 -- The parser needs to take the precedence of operators into account
--- parse :: String -> Program
+
+parse :: [Token] -> Program
 parse = undefined -- TODO
 
-lexer :: String -> [Token]
-lexer [] = []
-lexer ('+':restStr) = PlusTok : lexer restStr
-lexer ('-':restStr) = MinusTok : lexer restStr
-lexer ('*':restStr) = TimesTok : lexer restStr
-lexer ('(':restStr) = OpenTok : lexer restStr
-lexer (')':restStr) = CloseTok : lexer restStr
-lexer (';':restStr) = SemiColonTok : lexer restStr
-lexer ('a':'n':'d':' ':restStr) = AndTok : lexer restStr
-lexer ('=':'=':restStr) = IntEqTok : lexer restStr
-lexer ('=':restStr) = BoolEqTok : lexer restStr
-lexer ('<':'=':restStr) = LeTok : lexer restStr
-lexer ('n':'o':'t':' ':restStr) = NotTok : lexer restStr
-lexer (':':'=':restStr) = AssignTok : lexer restStr
-lexer ('w':'h':'i':'l':'e':' ':restStr) = WhileTok : lexer restStr
-lexer ('d':'o':' ':restStr) = DoTok : lexer restStr
-lexer ('i':'f':' ':restStr) = IfTok : lexer restStr
-lexer ('t':'h':'e':'n':' ':restStr) = ThenTok : lexer restStr
-lexer ('e':'l':'s':'e':' ':restStr) = ElseTok : lexer restStr
-lexer ('T':'r':'u':'e':' ':restStr) = BoolTok True : lexer restStr
-lexer ('F':'a':'l':'s':'e':' ':restStr) = BoolTok False : lexer restStr
+buildData :: [Token] -> Program
+buildData [] = []
+buildData list = [stm] ++ buildData restTok
+ where (stm, restTok) = getStatement list
 
-lexer str@(char:restStr)
- | isSpace char = lexer restStr
- | isDigit char = let (digStr, restStr) = span isDigit str
-                      stringToInt = foldl (\acc chr->10*acc+digitToInt chr) 0
-                  in if null restStr || not (head restStr == '_' || isLetter (head restStr))
-                      then IntTok (stringToInt digStr) : lexer restStr
-                     else error "Syntax error: Variables cannot start with a digit"
- | isLower char = let (varStr, restStr) = span (\x -> isLetter x || isDigit x || x == '_') str
-                   in VarTok varStr : lexer restStr
- | otherwise = error "Syntax error: Invalid symbol"
+
+getStatement :: [Token] -> (Stm, [Token])
+getStatement list@(WhileTok:rst) = getWhileStatement list 
+getStatement list@(IfTok:rst) = getIfStatement list 
+
+
+getWhileStatement :: [Token] -> (Stm, [Token])
+getWhileStatement (WhileTok:rest) = (WhileStm bexp (ParenthStm list), new_rest)
+ where 
+    (bexp, rest') = getBexp rest 
+    meth = tail rest'   -- check head rest' == do
+    (ParenthStm list, new_rest) = getStatement meth    -- listStms == ParenthStm
+getWhileStatement _ = error ""
+
+
+getIfStatement :: [Token] -> (Stm, [Token])
+getIfStatement = undefined
+
+
+getBexp :: [Token] -> (Bexp, [Token])
+getBexp (BoolTok bool:rest) = (BoolLit bool, rest)
+getBexp (NotTok:rest) = (NegExp bexp, new_rest)
+ where
+    (bexp, new_rest) = getBexp rest 
 
 
 -- To help you test your parser
