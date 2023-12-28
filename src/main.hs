@@ -125,15 +125,60 @@ run (Loop c1 c2:code, stack, storage) = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [
 
 -- TODO: Define the types Aexp, Bexp, Stm and Program
 
--- compA :: Aexp -> Code
-compA = undefined -- TODO
 
--- compB :: Bexp -> Code
-compB = undefined -- TODO
+data Aexp
+  = IntLit Integer
+  | VarLitA String
+  | AddExp Aexp Aexp
+  | SubExp Aexp Aexp
+  | MultExp Aexp Aexp
 
--- compile :: Program -> Code
-compile = undefined -- TODO
+data Bexp
+  = BoolLit Bool
+  | VarLitB String
+  | AndExp Bexp Bexp
+  | NegExp Bexp
+  | EquExpInt Aexp Aexp
+  | EquExpBool Bexp Bexp
+  | LeExp Aexp Aexp
 
+data Stm
+  = StoreStmA String Aexp
+  | StoreStmB String Bexp
+  | ParenthStm [Stm]    -- Check if this is necessary when we start doing parsing
+  | IfStm Bexp Stm Stm 
+  | WhileStm Bexp Stm
+
+type Program = [Stm]
+
+compA :: Aexp -> Code
+compA (IntLit n) = [Push n]
+compA (VarLitA var) = [Fetch var]
+compA (AddExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Add]
+compA (SubExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Sub]
+compA (MultExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Mult]
+
+compB :: Bexp -> Code
+compB (BoolLit val) = if val then [Tru] else [Fals]
+compB (VarLitB var) = [Fetch var]
+compB (AndExp bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [And]
+compB (NegExp bexp) = compB bexp ++ [Neg]
+compB (EquExpInt aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Equ]
+compB (EquExpBool bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [Equ]
+compB (LeExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Le]
+
+
+compile :: Program -> Code
+compile prog = concat $ map compileStm prog
+
+compileStm :: Stm -> Code
+compileStm (StoreStmA var aexp) = compA aexp ++ [Store var]
+compileStm (StoreStmB var bexp) = compB bexp ++ [Store var]
+compileStm (ParenthStm stms) = concat $ map compileStm stms
+compileStm (IfStm bexp stm1 stm2) = compB bexp ++ [Branch (compileStm stm1) (compileStm stm2)]
+compileStm (WhileStm bexp stm) = [Loop (compB bexp) (compileStm stm)]
+
+-- The parser needs to take the precedence of operators into account
 -- parse :: String -> Program
 parse = undefined -- TODO
 
@@ -184,6 +229,26 @@ lexer str@(char:restStr)
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
+
+-- Compiler A
+-- (AddExp (IntLit 1) (VarLitA "x"), [Fetch "x", Push 1, Add])
+-- (SubExp (IntLit 1) (VarLitA "x"), [Fetch "x", Push 1, Sub])
+-- (MultExp (IntLit 1) (VarLitA "x"), [Fetch "x", Push 1, Mult])
+-- (AddExp (IntLit 2) (MultExp (IntLit 7) (IntLit 13)), [Push 13, Push 7, Mult, Push 2, Add])
+-- (AddExp (IntLit 2) (MultExp (VarLitA "x") (VarLitA "y")), [Fetch "y", Fetch "x", Mult, Push 2, Add])
+
+-- Compiler B
+-- (NegExp (BoolLit True), [Tru, Neg])
+-- (AndExp (BoolLit True) (BoolLit False), [Fals, Tru, And])
+-- (AndExp (EquExpInt (AddExp (IntLit 1) (IntLit 2)) (IntLit 2)) (BoolLit False), [Fals, Push 2, Push 2, Push 1, Add, Equ, And])
+-- (EquExpBool (LeExp (IntLit 2) (IntLit 1)) (BoolLit False), [Fals, Push 1, Push 2, Le, Equ])
+
+-- Compiler Global
+-- ([StoreStmA "x" (AddExp (IntLit 1) (IntLit 2))], [Push 2, Push 1, Add, Store "x"])
+-- ([StoreStmA "x" (AddExp (IntLit 1) (IntLit 2)), StoreStmA "x" (AddExp (IntLit 1) (IntLit 2))], [Push 2, Push 1, Add, Store "x", Push 2, Push 1, Add, Store "x"])
+-- ([WhileStm (BoolLit True) (ParenthStm [StoreStmA "x" (IntLit 1), StoreStmB "y" (BoolLit True), IfStm (BoolLit False) (StoreStmA "z" (IntLit 2)) (StoreStmA "z" (IntLit 3))])], [Loop [Tru] [Push 1,Store "x",Tru,Store "y",Fals,Branch [Push 2,Store "z"] [Push 3,Store "z"]]])
+
+
 
 
 -- ####################################################################################################################
