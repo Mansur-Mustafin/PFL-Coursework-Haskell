@@ -1,7 +1,8 @@
 -- PFL 2023/24 - Haskell practical assignment quickstart
 -- Updated on 15/12/2023
 
-import Data.Char (isDigit, isLetter, isSpace, isLower, isUpper)
+import Data.Char (isDigit, isLetter, isSpace, isLower, isUpper, digitToInt)
+import Data.List (span)
 import Data.Either (isLeft, isRight, fromLeft, fromRight)
 import Data.Maybe (isJust, fromJust)
 import Pilha
@@ -10,6 +11,16 @@ import Map
 -- Part 1
 
 -- Do not modify our definition of Inst and Code
+data Token
+  = PlusTok | MinusTok | TimesTok
+  | OpenTok | CloseTok | SemiColonTok
+  | AndTok | BoolEqTok | IntEqTok | LeTok | NotTok
+  | AssignTok
+  | WhileTok | DoTok
+  | IfTok | ThenTok | ElseTok
+  | IntTok Int | VarTok String | BoolTok Bool
+  deriving (Show) 
+
 data Inst =
   Push Integer | Add | Mult | Sub | Tru | Fals | Equ | Le | And | Neg | Fetch String | Store String | Noop |
   Branch Code Code | Loop Code Code
@@ -39,8 +50,8 @@ stack2Str pilha
 
 
 state2Str :: State -> String
-state2Str state = if (Map.isEmpty state) then "" 
-                  else init . concat $ map showPair (map2List state)
+state2Str state = if Map.isEmpty state then "" 
+                  else init $ concatMap showPair (map2List state)
  where 
   showPair (k, Left "tt") = k ++ "=True,"
   showPair (k, Left "ff") = k ++ "=False,"
@@ -126,25 +137,38 @@ compile = undefined -- TODO
 -- parse :: String -> Program
 parse = undefined -- TODO
 
-lexer :: String -> [String]
-lexer "" = []
-lexer (curr1:curr2:rest) 
-  | elem (curr1:[curr2]) ["<=", ":=", "=="] = (curr1:[curr2]) : lexer rest
-lexer (curr:rest)
-  | elem curr ['(', ')', '+', '-', '*', ';', '='] = [curr] : lexer rest
-  | isDigit curr = let restStr = dropWhile isDigit rest
-                       nextChar = head restStr
-                   in if not (nextChar == '_' || isLetter nextChar)
-                      then takeWhile isDigit (curr:rest) : lexer (dropWhile isDigit rest)
-                      else error "Variable names cannot start with digits"
-  | isLower curr = let variableFilter char = char == '_' || isLetter char || isDigit char
-                   in takeWhile variableFilter (curr:rest) : lexer (dropWhile variableFilter rest)
-  | isUpper curr = let str = takeWhile isLower rest
-                   in if curr:str == "True" || curr:str == "False"
-                      then (curr:str) : lexer (dropWhile isLower rest)
-                      else error "Variable names cannot start with uppercase characters"
-  | isSpace curr = lexer (dropWhile isSpace rest)
-  | otherwise = error "Invalid token"
+lexer :: String -> [Token]
+lexer [] = []
+lexer ('+':restStr) = PlusTok : lexer restStr
+lexer ('-':restStr) = MinusTok : lexer restStr
+lexer ('*':restStr) = TimesTok : lexer restStr
+lexer ('(':restStr) = OpenTok : lexer restStr
+lexer (')':restStr) = CloseTok : lexer restStr
+lexer (';':restStr) = SemiColonTok : lexer restStr
+lexer ('a':'n':'d':' ':restStr) = AndTok : lexer restStr
+lexer ('=':'=':restStr) = IntEqTok : lexer restStr
+lexer ('=':restStr) = BoolEqTok : lexer restStr
+lexer ('<':'=':restStr) = LeTok : lexer restStr
+lexer ('n':'o':'t':' ':restStr) = NotTok : lexer restStr
+lexer (':':'=':restStr) = AssignTok : lexer restStr
+lexer ('w':'h':'i':'l':'e':' ':restStr) = WhileTok : lexer restStr
+lexer ('d':'o':' ':restStr) = DoTok : lexer restStr
+lexer ('i':'f':' ':restStr) = IfTok : lexer restStr
+lexer ('t':'h':'e':'n':' ':restStr) = ThenTok : lexer restStr
+lexer ('e':'l':'s':'e':' ':restStr) = ElseTok : lexer restStr
+lexer ('T':'r':'u':'e':' ':restStr) = BoolTok True : lexer restStr
+lexer ('F':'a':'l':'s':'e':' ':restStr) = BoolTok False : lexer restStr
+
+lexer str@(char:restStr)
+ | isSpace char = lexer restStr
+ | isDigit char = let (digStr, restStr) = span isDigit str
+                      stringToInt = foldl (\acc chr->10*acc+digitToInt chr) 0
+                  in if null restStr || not (head restStr == '_' || isLetter (head restStr))
+                      then IntTok (stringToInt digStr) : lexer restStr
+                     else error "Syntax error: Variables cannot start with a digit"
+ | isLower char = let (varStr, restStr) = span (\x -> isLetter x || isDigit x || x == '_') str
+                   in VarTok varStr : lexer restStr
+ | otherwise = error "Syntax error: Invalid symbol"
 
 
 -- To help you test your parser
