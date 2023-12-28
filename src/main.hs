@@ -133,7 +133,7 @@ data Bexp
 data Stm
   = StoreStmA String Aexp
   | StoreStmB String Bexp
-  | ParenthStm [Stm]
+  | ParenthStm [Stm]    -- Check if this is necessary when we start doing parsing
   | IfStm Bexp Stm Stm 
   | WhileStm Bexp Stm
 
@@ -156,8 +156,15 @@ compB (EquExpBool bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [Equ]
 compB (LeExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Le]
 
 
--- compile :: Program -> Code
-compile = undefined -- TODO
+compile :: Program -> Code
+compile prog = concat $ map compileStm prog
+
+compileStm :: Stm -> Code
+compileStm (StoreStmA var aexp) = compA aexp ++ [Store var]
+compileStm (StoreStmB var bexp) = compB bexp ++ [Store var]
+compileStm (ParenthStm stms) = concat $ map compileStm stms
+compileStm (IfStm bexp stm1 stm2) = compB bexp ++ [Branch (compileStm stm1) (compileStm stm2)]
+compileStm (WhileStm bexp stm) = [Loop (compB bexp) (compileStm stm)]
 
 -- The parser needs to take the precedence of operators into account
 -- parse :: String -> Program
@@ -189,6 +196,12 @@ parse = undefined -- TODO
 -- (AndExp (BoolLit True) (BoolLit False), [Fals, Tru, And])
 -- (AndExp (EquExpInt (AddExp (IntLit 1) (IntLit 2)) (IntLit 2)) (BoolLit False), [Fals, Push 2, Push 2, Push 1, Add, Equ, And])
 -- (EquExpBool (LeExp (IntLit 2) (IntLit 1)) (BoolLit False), [Fals, Push 1, Push 2, Le, Equ])
+
+-- Compiler Global
+-- ([StoreStmA "x" (AddExp (IntLit 1) (IntLit 2))], [Push 2, Push 1, Add, Store "x"])
+-- ([StoreStmA "x" (AddExp (IntLit 1) (IntLit 2)), StoreStmA "x" (AddExp (IntLit 1) (IntLit 2))], [Push 2, Push 1, Add, Store "x", Push 2, Push 1, Add, Store "x"])
+-- ([WhileStm (BoolLit True) (ParenthStm [StoreStmA "x" (IntLit 1), StoreStmB "y" (BoolLit True), IfStm (BoolLit False) (StoreStmA "z" (IntLit 2)) (StoreStmA "z" (IntLit 3))])], [Loop [Tru] [Push 1,Store "x",Tru,Store "y",Fals,Branch [Push 2,Store "z"] [Push 3,Store "z"]]])
+
 
 
 
