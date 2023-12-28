@@ -21,6 +21,31 @@ data Token
   | IntTok Int | VarTok String | BoolTok Bool
   deriving (Show) 
 
+data Aexp
+  = IntLit Integer
+  | VarLitA String
+  | AddExp Aexp Aexp
+  | SubExp Aexp Aexp
+  | MultExp Aexp Aexp
+
+data Bexp
+  = BoolLit Bool
+  | VarLitB String
+  | AndExp Bexp Bexp
+  | NegExp Bexp
+  | EquExpInt Aexp Aexp
+  | EquExpBool Bexp Bexp
+  | LeExp Aexp Aexp
+
+data Stm
+  = StoreStmA String Aexp
+  | StoreStmB String Bexp
+  | ParenthStm [Stm]    -- Check if this is necessary when we start doing parsing
+  | IfStm Bexp Stm Stm 
+  | WhileStm Bexp Stm
+
+type Program = [Stm]
+
 data Inst =
   Push Integer | Add | Mult | Sub | Tru | Fals | Equ | Le | And | Neg | Fetch String | Store String | Noop |
   Branch Code Code | Loop Code Code
@@ -124,32 +149,15 @@ run (Loop c1 c2:code, stack, storage) = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [
 -- Part 2
 
 -- TODO: Define the types Aexp, Bexp, Stm and Program
+compile :: Program -> Code
+compile prog = concatMap compileStm prog
 
-
-data Aexp
-  = IntLit Integer
-  | VarLitA String
-  | AddExp Aexp Aexp
-  | SubExp Aexp Aexp
-  | MultExp Aexp Aexp
-
-data Bexp
-  = BoolLit Bool
-  | VarLitB String
-  | AndExp Bexp Bexp
-  | NegExp Bexp
-  | EquExpInt Aexp Aexp
-  | EquExpBool Bexp Bexp
-  | LeExp Aexp Aexp
-
-data Stm
-  = StoreStmA String Aexp
-  | StoreStmB String Bexp
-  | ParenthStm [Stm]    -- Check if this is necessary when we start doing parsing
-  | IfStm Bexp Stm Stm 
-  | WhileStm Bexp Stm
-
-type Program = [Stm]
+compileStm :: Stm -> Code
+compileStm (StoreStmA var aexp) = compA aexp ++ [Store var]
+compileStm (StoreStmB var bexp) = compB bexp ++ [Store var]
+compileStm (ParenthStm stms) = concatMap compileStm stms
+compileStm (IfStm bexp stm1 stm2) = compB bexp ++ [Branch (compileStm stm1) (compileStm stm2)]
+compileStm (WhileStm bexp stm) = [Loop (compB bexp) (compileStm stm)]
 
 compA :: Aexp -> Code
 compA (IntLit n) = [Push n]
@@ -166,17 +174,6 @@ compB (NegExp bexp) = compB bexp ++ [Neg]
 compB (EquExpInt aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Equ]
 compB (EquExpBool bexp1 bexp2) = compB bexp2 ++ compB bexp1 ++ [Equ]
 compB (LeExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Le]
-
-
-compile :: Program -> Code
-compile prog = concat $ map compileStm prog
-
-compileStm :: Stm -> Code
-compileStm (StoreStmA var aexp) = compA aexp ++ [Store var]
-compileStm (StoreStmB var bexp) = compB bexp ++ [Store var]
-compileStm (ParenthStm stms) = concat $ map compileStm stms
-compileStm (IfStm bexp stm1 stm2) = compB bexp ++ [Branch (compileStm stm1) (compileStm stm2)]
-compileStm (WhileStm bexp stm) = [Loop (compB bexp) (compileStm stm)]
 
 -- The parser needs to take the precedence of operators into account
 -- parse :: String -> Program
