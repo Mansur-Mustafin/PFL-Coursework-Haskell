@@ -3,9 +3,9 @@
 
 import Data.List (span)
 import Pilha
-import Map 
+import Map
 import Lexer
-import Compile 
+import Compile
 import Debug.Trace (trace)
 
 -- Part 1
@@ -35,10 +35,10 @@ stack2Str pilha
 
 
 state2Str :: State -> String
-state2Str state 
- | Map.isEmpty state = "" 
- | otherwise = init . concat $ map showPair (map2List state)
- where 
+state2Str state
+ | Map.isEmpty state = ""
+ | otherwise = init $ concatMap showPair (map2List state)
+ where
   showPair (k, val) = k ++ "=" ++ showEither val ++ ","
 
 
@@ -48,15 +48,15 @@ run ([], stack, storage) = ([], stack, storage) -- base case
 run (Push int:code, stack, storage) = run (code, push (Right int) stack, storage)
 
 run (Add:code, stack, storage) = run (code, push (Right (v2+v1)) newStack, storage)
- where 
+ where
   (v1, v2, newStack) = get2RightValues stack
 
 run (Mult:code, stack, storage) = run (code, push (Right (v2*v1)) newStack, storage)
- where 
+ where
   (v1, v2, newStack) = get2RightValues stack
 
 run (Sub:code, stack, storage) = run (code, push (Right (v1-v2)) newStack, storage)
- where 
+ where
   (v1, v2, newStack) = get2RightValues stack
 
 run (Tru:code, stack, storage) = run (code, push (Left True) stack, storage)
@@ -72,7 +72,7 @@ run (Equ:code, stack, storage) =
 run (Le:code, stack, storage)
  | v1 <= v2 = run (code, push (Left True) newStack, storage)
  | otherwise = run (code, push (Left False) newStack, storage)
- where (v1, v2, newStack) = get2RightValues stack 
+ where (v1, v2, newStack) = get2RightValues stack
 
 run (And:code, stack, storage)
  | v1 && v2 = run (code, push (Left True) newStack, storage)
@@ -84,12 +84,12 @@ run (Neg:code, stack, storage) =
     Left bool -> run (code, push (Left (not bool)) (pop stack), storage)
     _         -> error "Run-time error"
 
-run (Fetch key:code, stack, storage) = 
-  case find key storage of 
+run (Fetch key:code, stack, storage) =
+  case find key storage of
     Just value -> run (code, push value stack, storage)
     Nothing    -> error "Run-time error"
 
-run (Store key:code, stack, storage) 
+run (Store key:code, stack, storage)
  = run (code, pop stack, insert key (top stack) storage)
 
 run (Noop:code, stack, storage) = run (code, stack, storage)
@@ -100,8 +100,8 @@ run (Branch c1 c2:code, stack, storage) =
     Left False -> run (c2++code, pop stack, storage)
     _          -> error "Run-time error"
 
-run (Loop c1 c2:code, stack, storage) 
- = run(c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code, stack, storage)
+run (Loop c1 c2:code, stack, storage)
+ = run (c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code, stack, storage)
 
 
 
@@ -114,7 +114,7 @@ parse =  buildData . lexer -- TODO
 
 buildData :: [Token] -> Program
 buildData [] = []
-buildData list = [stm] ++ buildData restTok
+buildData list = stm : buildData restTok
  where (stm, restTok) = getStatement list
 
 
@@ -122,8 +122,8 @@ getStatement :: [Token] -> (Stm, [Token])
 getStatement list@(WhileTok:rest) = getWhileStatement list
 getStatement list@(IfTok:rest) = getIfStatement list
 getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list
-getStatement list@(ForTok:rest) = getForStatement list 
-getStatement list@(OpenTok:rest) = (stm, rest) 
+getStatement list@(ForTok:rest) = getForStatement list
+getStatement list@(OpenTok:rest) = (stm, rest)
   where (stm, SemiColonTok:rest) = getParenthStatement list
 
 
@@ -142,41 +142,37 @@ getParenthStatement (OpenTok:rest) = (ParenthStm stms, restTokens)
 getStatement'  :: [Token] -> ([Stm], [Token])
 getStatement' l@(CloseTok:rest) = ([], rest)
 getStatement' [] = error "Syntax error: unmatch parentheses."
-getStatement' l = ((fst (getStatement l)) : stms , rest)
+getStatement' l = (fst (getStatement l) : stms , rest)
  where (stms, rest) =  getStatement' (snd (getStatement l))
 
 
 getStoreStatement :: [Token] -> (Stm, [Token])
-getStoreStatement (VarTok var:AssignTok:rest) = 
-  case isBool rest of
-    True -> case getBexp rest of 
-               (bexp, SemiColonTok:restTokens) -> (StoreStmB var bexp, restTokens)
-    False -> case getAexp rest of
-               (aexp, SemiColonTok:restTokens) -> (StoreStmA var aexp, restTokens)
-               _ -> error "Syntax error: Assign value."
+getStoreStatement (VarTok var:AssignTok:rest) =
+  if isBool rest then (case getBexp rest of
+           (bexp, SemiColonTok:restTokens) -> (StoreStmB var bexp, restTokens)) else (case getAexp rest of
+           (aexp, SemiColonTok:restTokens) -> (StoreStmA var aexp, restTokens)
+           _ -> error "Syntax error: Assign value.")
 
 
-isBool :: [Token] -> Bool 
+isBool :: [Token] -> Bool
 isBool (SemiColonTok:r) = False
-isBool (x:xs) = if (elem x [BoolTok True, BoolTok False, AndTok, BoolEqTok, IntEqTok, LeTok, NotTok])
-                 then True 
-                else isBool xs
+isBool (x:xs) = elem x [BoolTok True, BoolTok False, AndTok, BoolEqTok, IntEqTok, LeTok, NotTok] || isBool xs
 
 
 getIfStatement :: [Token] -> (Stm, [Token])
 getIfStatement (IfTok:rest) = (IfStm bexp thenStm elseStm, restTokens)
- where 
-  (bexp, ThenTok:restTokens1) = getBexp rest    
-  (thenStm, ElseTok:restTokens2) = if (head restTokens1 == OpenTok)
-                                    then getParenthStatement (restTokens1)
+ where
+  (bexp, ThenTok:restTokens1) = getBexp rest
+  (thenStm, ElseTok:restTokens2) = if head restTokens1 == OpenTok
+                                    then getParenthStatement restTokens1
                                    else getStatement restTokens1
   (elseStm, restTokens) = getStatement restTokens2
 
 
 getWhileStatement :: [Token] -> (Stm, [Token])
 getWhileStatement (WhileTok:rest) = (WhileStm bexp stm, restTokens)
- where 
-  (bexp, DoTok:restTokens1) = getBexp rest 
+ where
+  (bexp, DoTok:restTokens1) = getBexp rest
   (stm, restTokens) = getStatement restTokens1
 
 --------------------------------------------------------------------------------------------------------------
@@ -192,12 +188,12 @@ getAexp tokens =
 -- parse Sum and Substruction 
 parseSumSub :: [Token] ->  Maybe (Aexp, [Token])
 parseSumSub tokens =
-  case parseProd tokens of 
-    Just (exp1, (PlusTok:restTokens1)) ->
+  case parseProd tokens of
+    Just (exp1, PlusTok:restTokens1) ->
       case parseSumSub restTokens1 of
         Just (exp2, restTokens2) -> Just (AddExp exp1 exp2, restTokens2)
         Nothing                  -> Nothing
-    Just (exp1, (MinusTok: restTokens1)) ->
+    Just (exp1, MinusTok: restTokens1) ->
       case parseSumSub restTokens1 of
         Just (exp2, restTokens2) -> Just (SubExp exp1 exp2, restTokens2)
         Nothing                  -> Nothing
@@ -206,8 +202,8 @@ parseSumSub tokens =
 -- parse Product
 parseProd :: [Token] ->  Maybe (Aexp, [Token])
 parseProd tokens =
-  case parseIntVarPar tokens of 
-    Just (exp1, (TimesTok: restTokens1)) ->
+  case parseIntVarPar tokens of
+    Just (exp1, TimesTok: restTokens1) ->
       case parseProd restTokens1 of
         Just (exp2, restTokens2) -> Just (MultExp exp1 exp2, restTokens2)
         Nothing                  -> Nothing
@@ -219,7 +215,7 @@ parseIntVarPar (IntTok n: restTokens) = Just (IntLit n, restTokens)
 parseIntVarPar (VarTok v: restTokens) = Just (VarLitA v, restTokens)
 parseIntVarPar (OpenTok:restTokens1) =
   case parseSumSub restTokens1 of
-    Just (exp1, (CloseTok:restTokens2)) -> Just (exp1, restTokens2)
+    Just (exp1, CloseTok:restTokens2) -> Just (exp1, restTokens2)
     _ -> Nothing
 parseIntVarPar _ = Nothing
 
@@ -228,7 +224,7 @@ parseIntVarPar _ = Nothing
 -- AndTok -> BoolEqTok -> NotTok -> IntEqTok / LeTok and BoolLit/VarLit/Pars
 
 getBexp :: [Token] -> (Bexp, [Token])
-getBexp tokens =   
+getBexp tokens =
   case parseAnd tokens of
     Just (bExp, tokens) -> (bExp, tokens)
     _                   -> error "Syntax error: Boolean expression."
@@ -237,8 +233,8 @@ getBexp tokens =
 -- parse And
 parseAnd :: [Token] ->  Maybe (Bexp, [Token])
 parseAnd tokens =
-  case parseBoolEq tokens of 
-    Just (exp1, (AndTok:restTokens1)) ->
+  case parseBoolEq tokens of
+    Just (exp1, AndTok:restTokens1) ->
       case parseAnd restTokens1 of
         Just (exp2, restTokens2) -> Just (AndExp exp1 exp2, restTokens2)
         Nothing                  -> Nothing
@@ -248,8 +244,8 @@ parseAnd tokens =
 -- parse Boolean equality
 parseBoolEq :: [Token] ->  Maybe (Bexp, [Token])
 parseBoolEq tokens =
-  case parseNot tokens of 
-    Just (exp1, (BoolEqTok:restTokens1)) ->
+  case parseNot tokens of
+    Just (exp1, BoolEqTok:restTokens1) ->
       case parseBoolEq restTokens1 of
         Just (exp2, restTokens2) -> Just (EquExpBool exp1 exp2, restTokens2)
         Nothing                  -> Nothing
@@ -258,12 +254,12 @@ parseBoolEq tokens =
 
 -- parse Integer equality
 parseNot :: [Token] ->  Maybe (Bexp, [Token])
-parseNot (NotTok:restTokens) = 
+parseNot (NotTok:restTokens) =
   case parseNot restTokens of
     Just (exp1, restTokens1) -> Just (NegExp exp1, restTokens1)
     result -> result
 
-parseNot tokens = 
+parseNot tokens =
   case parseIntEqLe tokens of
     Just (exp1, restTokens1) -> Just (exp1, restTokens1)
     Nothing -> case parseBoolVarPars tokens of
@@ -274,12 +270,12 @@ parseNot tokens =
 -- parse Boolean equality and inequality
 parseIntEqLe :: [Token] ->  Maybe (Bexp, [Token])
 parseIntEqLe tokens =
-  case parseSumSub tokens of 
-    Just (exp1, (IntEqTok:restTokens1)) ->
+  case parseSumSub tokens of
+    Just (exp1, IntEqTok:restTokens1) ->
       case parseSumSub restTokens1 of
         Just (exp2, restTokens2) -> Just (EquExpInt exp1 exp2, restTokens2)
         Nothing                  -> Nothing
-    Just (exp1, (LeTok:restTokens1)) ->
+    Just (exp1, LeTok:restTokens1) ->
       case parseSumSub restTokens1 of
         Just (exp2, restTokens2) -> Just (LeExp exp1 exp2, restTokens2)
         Nothing                  -> Nothing
@@ -292,7 +288,7 @@ parseBoolVarPars (BoolTok n: restTokens) = Just (BoolLit n, restTokens)
 parseBoolVarPars (VarTok v: restTokens) = Just (VarLitB v, restTokens)
 parseBoolVarPars (OpenTok:restTokens1) =
   case parseAnd restTokens1 of
-    Just (exp1, (CloseTok:restTokens2)) -> Just (exp1, restTokens2)
+    Just (exp1, CloseTok:restTokens2) -> Just (exp1, restTokens2)
     _ -> Nothing
 parseBoolVarPars _ = Nothing
 
@@ -304,7 +300,7 @@ parseBoolVarPars _ = Nothing
 -- #                                                                                                                  #
 -- ####################################################################################################################
 -- Examples:
--- testParser "x := 5; x := x - 1;" == ("","x=4")
+-- testParser "x := 5;  x := x -1;" == ("","x=4")
 -- testParser "x := 0 - 2;" == ("","x=-2")
 -- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
 -- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
@@ -360,25 +356,25 @@ testCasesCompile1 = [
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
-  where (_,stack,state) = run(code, createEmptyStack, createEmptyState)
+  where (_,stack,state) = run (code, createEmptyStack, createEmptyState)
 
 -- To help you test your parser
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
-  where (_,stack,state) = run(compile (parse programCode), createEmptyStack, createEmptyState)
+  where (_,stack,state) = run (compile (parse programCode), createEmptyStack, createEmptyState)
 
 
 runTest :: (Int, ([Inst], (String, String))) -> IO ()
-runTest (index, (input, expected)) 
+runTest (index, (input, expected))
  | result == expected = putStrLn $ "Test " ++ show index ++ " passed."
  | otherwise = putStrLn $ "Test " ++ show index ++ " failed. Expected " ++ show expected ++ " but got " ++ show result
  where result = testAssembler input
 
 runAllTests :: [(Int, ([Inst], (String, String)))] -> IO ()
-runAllTests [] = return ()  
+runAllTests [] = return ()
 runAllTests (test:rest) = do
-    runTest test 
-    runAllTests rest 
+    runTest test
+    runAllTests rest
 
 main :: IO ()
 main = do

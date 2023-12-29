@@ -21,45 +21,10 @@ lexer ('*':restStr) = TimesTok : lexer restStr
 lexer ('(':restStr) = OpenTok : lexer restStr
 lexer (')':restStr) = CloseTok : lexer restStr
 lexer (';':restStr) = SemiColonTok : lexer restStr
-
-lexer ('a':'n':'d':' ':restStr) = AndTok : lexer restStr
-lexer ('a':'n':'d':'(':restStr) = AndTok : OpenTok : lexer restStr
-
 lexer ('=':'=':restStr) = IntEqTok : lexer restStr
 lexer ('=':restStr) = BoolEqTok : lexer restStr
 lexer ('<':'=':restStr) = LeTok : lexer restStr
-
-lexer ('n':'o':'t':' ':restStr) = NotTok : lexer restStr
-lexer ('n':'o':'t':'(':restStr) = NotTok : OpenTok : lexer restStr
-
 lexer (':':'=':restStr) = AssignTok : lexer restStr
-
-lexer ('w':'h':'i':'l':'e':' ':restStr) = WhileTok : lexer restStr
-lexer ('w':'h':'i':'l':'e':'(':restStr) = WhileTok : OpenTok : lexer restStr
-
-lexer ('d':'o':' ':restStr) = DoTok : lexer restStr
-lexer ('d':'o':'(':restStr) = DoTok : OpenTok : lexer restStr
-
-lexer ('i':'f':' ':restStr) = IfTok : lexer restStr
-lexer ('i':'f':'(':restStr) = IfTok : OpenTok : lexer restStr
-
-lexer ('f':'o':'r':' ':restStr) = ForTok : lexer restStr
-lexer ('f':'o':'r':'(':restStr) = ForTok : OpenTok : lexer restStr
-
-lexer ('t':'h':'e':'n':' ':restStr) = ThenTok : lexer restStr
-lexer ('t':'h':'e':'n':'(':restStr) = ThenTok : OpenTok : lexer restStr
-
-lexer ('e':'l':'s':'e':' ':restStr) = ElseTok : lexer restStr
-lexer ('e':'l':'s':'e':'(':restStr) = ElseTok : OpenTok : lexer restStr
-
-lexer ('T':'r':'u':'e':' ':restStr) = BoolTok True : lexer restStr
-lexer ('T':'r':'u':'e':';':restStr) = BoolTok True : SemiColonTok : lexer restStr
-lexer ('T':'r':'u':'e':')':restStr) = BoolTok True : CloseTok : lexer restStr
-
-lexer ('F':'a':'l':'s':'e':' ':restStr) = BoolTok False : lexer restStr
-lexer ('F':'a':'l':'s':'e':';':restStr) = BoolTok False : SemiColonTok : lexer restStr
-lexer ('F':'a':'l':'s':'e':')':restStr) = BoolTok False : CloseTok : lexer restStr
-
 
 lexer str@(char:restStr)
  | isSpace char = lexer restStr
@@ -68,7 +33,20 @@ lexer str@(char:restStr)
                   in if null restStr || not (head restStr == '_' || isLetter (head restStr))
                       then IntTok (stringToInt digStr) : lexer restStr
                      else error "Syntax error: Variables cannot start with a digit"
- | isLower char = let (varStr, restStr) = span (\x -> isLetter x || isDigit x || x == '_') str
-                   in VarTok varStr : lexer restStr
+ | isLetter char = let (varStr, restStr) = span (\x -> isLetter x || isDigit x || x == '_') str
+                   in getWordToken varStr : lexer restStr
  | otherwise = error "Syntax error: Invalid symbol"
 
+getWordToken :: String -> Token
+getWordToken "and" = AndTok
+getWordToken "not" = NotTok
+getWordToken "while" = WhileTok
+getWordToken "do" = DoTok
+getWordToken "if" = IfTok
+getWordToken "then" = ThenTok
+getWordToken "else" = ElseTok
+getWordToken "for" = ForTok
+getWordToken "True" = BoolTok True
+getWordToken "False" = BoolTok False
+getWordToken str@(first:rest) | isLower first = VarTok str
+getWordToken _ = error "Syntax error: Invalid symbol"
