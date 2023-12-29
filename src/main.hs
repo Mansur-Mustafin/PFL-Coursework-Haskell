@@ -6,6 +6,7 @@ import Pilha
 import Map 
 import Lexer
 import Compile 
+import Debug.Trace (trace)
 
 -- Part 1
 
@@ -121,20 +122,45 @@ getStatement :: [Token] -> (Stm, [Token])
 getStatement list@(WhileTok:rest) = getWhileStatement list -- TODO
 getStatement list@(IfTok:rest) = getIfStatement list -- TODO
 getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list 
+getStatement list@(OpenTok:rest) = (stm, rest) 
+  where (stm, SemiColonTok:rest) = getParenthStatement list
+
+getParenthStatement :: [Token] -> (Stm, [Token])
+getParenthStatement (OpenTok:rest) = (ParenthStm stms, restTokens)
+ where (stms, restTokens) = getStatement' rest
+
+getStatement'  :: [Token] -> ([Stm], [Token])
+getStatement' l@(CloseTok:rest) = ([], rest)
+getStatement' [] = error "Syntax error: unmatch parentheses."
+getStatement' l = ((fst (getStatement l)) : stms , rest)
+ where (stms, rest) =  getStatement' (snd (getStatement l))
 
 
 getStoreStatement :: [Token] -> (Stm, [Token])
-getStoreStatement (VarTok var:AssignTok:rest) = (StoreStmA var aexp, restTokens) 
- where (aexp, SemiColonTok:restTokens) = getAexp rest
-getStoreStatement _ = error "Syntax error: Assign value."
+getStoreStatement (VarTok var:AssignTok:rest) = 
+  case isBool rest of
+    True -> case getBexp rest of 
+               (bexp, SemiColonTok:restTokens) -> (StoreStmB var bexp, restTokens)
+    False -> case getAexp rest of
+               (aexp, SemiColonTok:restTokens) -> (StoreStmA var aexp, restTokens)
+               _ -> error "Syntax error: Assign value."
+
+
+isBool :: [Token] -> Bool 
+isBool (SemiColonTok:r) = False
+isBool (x:xs) = if (elem x [BoolTok True, BoolTok False, AndTok, BoolEqTok, IntEqTok, LeTok, NotTok])
+                 then True 
+                else isBool xs
 
 
 getIfStatement :: [Token] -> (Stm, [Token])
 getIfStatement (IfTok:rest) = (IfStm bexp thenStm elseStm, restTokens)
  where 
-  (bexp, ThenTok:restTokens1) = getBexp rest    -- isso funciona se tem ou nao tem parenteces
-  (thenStm, ElseTok:restTokens2) = undefined    -- aqui e deficil porque podemos ter um 'if' dentro de then, e temos que saber ate onde calcular
-  (elseStm, SemiColonTok:restTokens) = undefined
+  (bexp, ThenTok:restTokens1) = getBexp rest    
+  (thenStm, ElseTok:restTokens2) = if (head restTokens1 == OpenTok)
+                                    then getParenthStatement (restTokens1)
+                                   else getStatement restTokens1
+  (elseStm, restTokens) = getStatement restTokens2
 
 
 getWhileStatement :: [Token] -> (Stm, [Token])

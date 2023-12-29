@@ -25,6 +25,7 @@ data Bexp
 
 data Stm
   = StoreStmA String Aexp
+  | StoreStmB String Bexp
   | ParenthStm [Stm]    -- Check if this is necessary when we start doing parsing
   | IfStm Bexp Stm Stm 
   | WhileStm Bexp Stm
@@ -39,6 +40,7 @@ compile prog = concatMap compileStm prog
 
 compileStm :: Stm -> Code
 compileStm (StoreStmA var aexp) = compA aexp ++ [Store var]
+compileStm (StoreStmB var bexp) = compB bexp ++ [Store var]
 compileStm (ParenthStm stms) = concatMap compileStm stms
 compileStm (IfStm bexp stm1 stm2) = compB bexp ++ [Branch (compileStm stm1) (compileStm stm2)]
 compileStm (WhileStm bexp stm) = [Loop (compB bexp) (compileStm stm)]
