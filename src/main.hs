@@ -164,7 +164,10 @@ getIfStatement (IfTok:rest) = (IfStm bexp thenStm elseStm, restTokens)
 
 
 getWhileStatement :: [Token] -> (Stm, [Token])
-getWhileStatement = undefined
+getWhileStatement (WhileTok:rest) = (WhileStm bexp stm, restTokens)
+ where 
+  (bexp, DoTok:restTokens1) = getBexp rest 
+  (stm, restTokens) = getStatement restTokens1
 
 --------------------------------------------------------------------------------------------------------------
 -- We should define the levels of operations: 
