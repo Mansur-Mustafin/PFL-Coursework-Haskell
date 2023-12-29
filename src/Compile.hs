@@ -11,6 +11,7 @@ data Aexp
   | AddExp Aexp Aexp
   | SubExp Aexp Aexp
   | MultExp Aexp Aexp
+  deriving (Show) 
 
 data Bexp
   = BoolLit Bool
@@ -20,12 +21,14 @@ data Bexp
   | EquExpInt Aexp Aexp
   | EquExpBool Bexp Bexp
   | LeExp Aexp Aexp
+  deriving (Show) 
 
 data Stm
   = StoreStmA String Aexp
   | ParenthStm [Stm]    -- Check if this is necessary when we start doing parsing
   | IfStm Bexp Stm Stm 
   | WhileStm Bexp Stm
+  deriving (Show) 
 
 type Program = [Stm]
 type Code = [Inst]

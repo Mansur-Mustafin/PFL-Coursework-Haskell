@@ -1,5 +1,5 @@
 -- PFL 2023/24 - Haskell practical assignment quickstart
--- Updated on 15/12/2023
+-- Updated on 27/12/2023
 
 import Data.List (span)
 import Pilha
@@ -108,7 +108,7 @@ run (Loop c1 c2:code, stack, storage)
 
 -- The parser needs to take the precedence of operators into account
 
-parse :: [Token] -> Program
+parse :: String -> Program
 parse = undefined -- TODO
 
 buildData :: [Token] -> Program
@@ -123,36 +123,80 @@ getStatement list@(IfTok:rst) = getIfStatement list
 
 
 getWhileStatement :: [Token] -> (Stm, [Token])
-getWhileStatement (WhileTok:rest) = (WhileStm bexp (ParenthStm list), new_rest)
- where 
-    (bexp, rest') = getBexp rest 
-    meth = tail rest'   -- check head rest' == do
-    (ParenthStm list, new_rest) = getStatement meth    -- listStms == ParenthStm
-getWhileStatement _ = error ""
-
+getWhileStatement = undefined
 
 getIfStatement :: [Token] -> (Stm, [Token])
 getIfStatement = undefined
 
-
 getBexp :: [Token] -> (Bexp, [Token])
-getBexp (BoolTok bool:rest) = (BoolLit bool, rest)
-getBexp (NotTok:rest) = (NegExp bexp, new_rest)
- where
-    (bexp, new_rest) = getBexp rest 
+getBexp = undefined
+
+-- We should define the levels of operations: 
+-- Sum / Sub -> Mult -> IntLit / VarLit
+
+getAexp :: [Token] -> (Aexp, [Token])
+getAexp tokens =
+  case parseSumSub tokens of
+    Just (aExp, tokens) -> (aExp, tokens)
+    _                   -> error "Syntax error: Algebric expression."
+
+-- parse Sum and Substruction 
+parseSumSub :: [Token] ->  Maybe (Aexp, [Token])
+parseSumSub tokens =
+  case parseProd tokens of 
+    Just (exp1, (PlusTok:restTokens1)) ->
+      case parseSumSub restTokens1 of
+        Just (exp2, restTokens2) -> Just (AddExp exp1 exp2, restTokens2)
+        Nothing                  -> Nothing
+    Just (exp1, (MinusTok: restTokens1)) ->
+      case parseSumSub restTokens1 of
+        Just (exp2, restTokens2) -> Just (SubExp exp1 exp2, restTokens2)
+        Nothing                  -> Nothing
+    result -> result
+
+-- parse Product
+parseProd :: [Token] ->  Maybe (Aexp, [Token])
+parseProd tokens =
+  case parseIntVarPar tokens of 
+    Just (exp1, (TimesTok: restTokens1)) ->
+      case parseProd restTokens1 of
+        Just (exp2, restTokens2) -> Just (MultExp exp1 exp2, restTokens2)
+        Nothing                  -> Nothing
+    other -> other
+
+-- parse the Integer values or Variables
+parseIntVarPar :: [Token] -> Maybe (Aexp, [Token])
+parseIntVarPar (IntTok n: restTokens) = Just (IntLit n, restTokens)
+parseIntVarPar (VarTok v: restTokens) = Just (VarLitA v, restTokens)
+parseIntVarPar (OpenTok:restTokens1) =
+  case parseSumSub restTokens1 of
+    Just (exp1, (CloseTok:restTokens2)) -> Just (exp1, restTokens2)
+    _ -> Nothing
+parseIntVarPar _ = Nothing
 
 
--- To help you test your parser
--- testParser :: String -> (String, String)
--- testParser programCode = (stack2Str stack, store2Str store)
---  where (_,stack,store) = run(compile (parse programCode), createEmptyStack, createEmptyStore)
 
+
+
+
+
+
+-- ####################################################################################################################
+-- #                                                                                                                  #
+-- #                                                      Tests                                                       #
+-- #                                                                                                                  #
+-- ####################################################################################################################
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
+-- testParser "x := 0 - 2;" == ("","x=-2")
 -- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
--- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;)" == ("","x=1")
+-- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
+-- testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
+-- testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
+-- testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
+-- testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
 
@@ -176,19 +220,13 @@ getBexp (NotTok:rest) = (NegExp bexp, new_rest)
 
 
 
-
--- ####################################################################################################################
--- #                                                                                                                  #
--- #                                                      Tests                                                       #
--- #                                                                                                                  #
--- ####################################################################################################################
-
 -- Examples:
 -- testAssembler [Push 1,Push 2,And]:                     "Run-time error"
 -- testAssembler [Tru,Tru,Store "y", Fetch "x",Tru]:      "Run-time error"
 -- testAssembler [Push 10,Push 2,Branch [Add] [Sub]] :    "Run-time error"
-testCasesCompile :: [([Inst], (String, String))]
-testCasesCompile = [
+
+testCasesCompile1 :: [([Inst], (String, String))]
+testCasesCompile1 = [
     ([Push 10,Push 4,Push 3,Sub,Mult], ("-10","")),
     ([Fals,Push 3,Tru,Store "var",Store "a", Store "someVar"], ("","a=3,someVar=False,var=True")),
     ([Fals,Store "var",Fetch "var"], ("False","var=False")),
@@ -207,6 +245,12 @@ testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
   where (_,stack,state) = run(code, createEmptyStack, createEmptyState)
 
+-- To help you test your parser
+testParser :: String -> (String, String)
+testParser programCode = (stack2Str stack, state2Str state)
+  where (_,stack,state) = run(compile (parse programCode), createEmptyStack, createEmptyState)
+
+
 runTest :: (Int, ([Inst], (String, String))) -> IO ()
 runTest (index, (input, expected)) 
  | result == expected = putStrLn $ "Test " ++ show index ++ " passed."
@@ -221,6 +265,10 @@ runAllTests (test:rest) = do
 
 main :: IO ()
 main = do
-    putStrLn "Starting tests..."
-    runAllTests $ zip [1..] testCasesCompile 
-    putStrLn "All tests completed."
+    runAllTests $ zip [1..] testCasesCompile1
+    -- Aexp
+
+
+{-
+    testAssembler $ compA $ fst $ getAexp $ lexer "((2 + 3) * (4 - 1)) + 5" deve dar ("20","")
+-}

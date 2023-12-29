@@ -9,7 +9,7 @@ data Token
   | AssignTok
   | WhileTok | DoTok
   | IfTok | ThenTok | ElseTok
-  | IntTok Int | VarTok String | BoolTok Bool
+  | IntTok Integer | VarTok String | BoolTok Bool
   deriving (Show) 
 
 lexer :: String -> [Token]
@@ -60,7 +60,7 @@ lexer ('F':'a':'l':'s':'e':')':restStr) = BoolTok False : CloseTok : lexer restS
 lexer str@(char:restStr)
  | isSpace char = lexer restStr
  | isDigit char = let (digStr, restStr) = span isDigit str
-                      stringToInt = foldl (\acc chr->10*acc+digitToInt chr) 0
+                      stringToInt = foldl (\acc chr -> 10 * acc + fromIntegral (digitToInt chr)) 0
                   in if null restStr || not (head restStr == '_' || isLetter (head restStr))
                       then IntTok (stringToInt digStr) : lexer restStr
                      else error "Syntax error: Variables cannot start with a digit"
