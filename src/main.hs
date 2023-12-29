@@ -128,11 +128,11 @@ getWhileStatement = undefined
 getIfStatement :: [Token] -> (Stm, [Token])
 getIfStatement = undefined
 
-getBexp :: [Token] -> (Bexp, [Token])
-getBexp = undefined
 
+
+--------------------------------------------------------------------------------------------------------------
 -- We should define the levels of operations: 
--- Sum / Sub -> Mult -> IntLit / VarLit
+-- Sum / Sub -> Mult -> IntLit / VarLit / Pars
 
 getAexp :: [Token] -> (Aexp, [Token])
 getAexp tokens =
@@ -174,10 +174,81 @@ parseIntVarPar (OpenTok:restTokens1) =
     _ -> Nothing
 parseIntVarPar _ = Nothing
 
+--------------------------------------------------------------------------------------------------------------
+-- We should define the levels of operations: 
+-- AndTok -> BoolEqTok -> NotTok -> IntEqTok -> LeTok -> BoolLit/VarLit/Pars
+
+getBexp :: [Token] -> (Bexp, [Token])
+getBexp tokens =   
+  case parseAnd tokens of
+    Just (bExp, tokens) -> (bExp, tokens)
+    _                   -> error "Syntax error: Boolean expression."
 
 
+-- parse And
+parseAnd :: [Token] ->  Maybe (Bexp, [Token])
+parseAnd tokens =
+  case parseBoolEq tokens of 
+    Just (exp1, (AndTok:restTokens1)) ->
+      case parseAnd restTokens1 of
+        Just (exp2, restTokens2) -> Just (AndExp exp1 exp2, restTokens2)
+        Nothing                  -> Nothing
+    result -> result
 
 
+-- parse Boolean equality
+parseBoolEq :: [Token] ->  Maybe (Bexp, [Token])
+parseBoolEq tokens =
+  case parseNot tokens of 
+    Just (exp1, (BoolEqTok:restTokens1)) ->
+      case parseBoolEq restTokens1 of
+        Just (exp2, restTokens2) -> Just (EquExpBool exp1 exp2, restTokens2)
+        Nothing                  -> Nothing
+    result -> result
+
+
+-- parse Integer equality
+parseNot :: [Token] ->  Maybe (Bexp, [Token])
+parseNot (NotTok:restTokens) = 
+  case parseNot restTokens of
+    Just (exp1, restTokens1) -> Just (NegExp exp1, restTokens1)
+    result -> result
+
+parseNot tokens = parseLowerNot tokens
+
+parseLowerNot :: [Token] ->  Maybe (Bexp, [Token])
+parseLowerNot tokens = 
+  case parseIntEqLe tokens of
+    Just (exp1, restTokens1) -> Just (exp1, restTokens1)
+    Nothing -> case parseBoolVarPars tokens of
+      Just (exp2, restTokens2) -> Just (exp2, restTokens2)
+      Nothing -> Nothing
+
+
+-- parse Boolean equality
+parseIntEqLe :: [Token] ->  Maybe (Bexp, [Token])
+parseIntEqLe tokens =
+  case parseSumSub tokens of 
+    Just (exp1, (IntEqTok:restTokens1)) ->
+      case parseSumSub restTokens1 of
+        Just (exp2, restTokens2) -> Just (EquExpInt exp1 exp2, restTokens2)
+        Nothing                  -> Nothing
+    Just (exp1, (LeTok:restTokens1)) ->
+      case parseSumSub restTokens1 of
+        Just (exp2, restTokens2) -> Just (LeExp exp1 exp2, restTokens2)
+        Nothing                  -> Nothing
+    _ -> Nothing
+
+
+-- parse the Integer values or Variables
+parseBoolVarPars :: [Token] -> Maybe (Bexp, [Token])
+parseBoolVarPars (BoolTok n: restTokens) = Just (BoolLit n, restTokens)
+parseBoolVarPars (VarTok v: restTokens) = Just (VarLitB v, restTokens)
+parseBoolVarPars (OpenTok:restTokens1) =
+  case parseAnd restTokens1 of
+    Just (exp1, (CloseTok:restTokens2)) -> Just (exp1, restTokens2)
+    _ -> Nothing
+parseBoolVarPars _ = Nothing
 
 
 
@@ -269,6 +340,5 @@ main = do
     -- Aexp
 
 
-{-
-    testAssembler $ compA $ fst $ getAexp $ lexer "((2 + 3) * (4 - 1)) + 5" deve dar ("20","")
--}
+-- testAssembler $ compA $ fst $ getAexp $ lexer "((2 + 3) * (4 - 1)) + 5" deve dar ("20","")
+-- testAssembler $ compB $ fst $ getBexp $ lexer "not True and 2 <= 5 = 3 == 4" deve dar False

@@ -18,8 +18,8 @@ data Bexp
   | VarLitB String
   | AndExp Bexp Bexp
   | NegExp Bexp
-  | EquExpInt Aexp Aexp
   | EquExpBool Bexp Bexp
+  | EquExpInt Aexp Aexp
   | LeExp Aexp Aexp
   deriving (Show) 
 
