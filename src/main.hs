@@ -10,10 +10,8 @@ import Debug.Trace (trace)
 
 -- Part 1
 
--- Do not modify our definition of Inst and Code
 type State = (Map String (Either Bool Integer))
 type Stack = (Pilha (Either Bool Integer))
-
 
 createEmptyStack :: Stack
 createEmptyStack = Pilha.empty
@@ -74,6 +72,7 @@ run (Le:code, stack, storage)
  | otherwise = run (code, push (Left False) newStack, storage)
  where (v1, v2, newStack) = get2RightValues stack
 
+
 run (And:code, stack, storage)
  | v1 && v2 = run (code, push (Left True) newStack, storage)
  | otherwise = run (code, push (Left False) newStack, storage)
@@ -102,7 +101,6 @@ run (Branch c1 c2:code, stack, storage) =
 
 run (Loop c1 c2:code, stack, storage)
  = run (c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code, stack, storage)
-
 
 
 -- Part 2
@@ -337,6 +335,8 @@ parseBoolVarPars _ = Nothing
 -- testAssembler [Push 1,Push 2,And]:                     "Run-time error"
 -- testAssembler [Tru,Tru,Store "y", Fetch "x",Tru]:      "Run-time error"
 -- testAssembler [Push 10,Push 2,Branch [Add] [Sub]] :    "Run-time error"
+-- testAssembler [Tru,Fals,Neg,Add]                      "Run-time error"
+-- testAssembler [Tru,Push 2,Equ]                        "Run-time error"
 
 testCasesCompile1 :: [([Inst], (String, String))]
 testCasesCompile1 = [
@@ -346,6 +346,8 @@ testCasesCompile1 = [
     ([Push (-20),Tru,Fals], ("False,True,-20","")),
     ([Push (-20),Tru,Tru,Neg], ("False,True,-20","")),
     ([Push (-20),Tru,Tru,Neg,Equ], ("False,-20","")),
+    ([Push (-20),Push (-20),Equ], ("True","")),
+    ([Push (-20),Push (10),Equ], ("False","")),
     ([Push (-20),Push (-21), Le], ("True","")),
     ([Push 5,Store "x",Push 1,Fetch "x",Sub,Store "x"], ("","x=4")),
     ([Push 10, Store "i", Push 1, Store "fact", Loop [Push 1, Fetch "i", Equ, Neg] [Fetch "i", Fetch "fact", Mult, Store "fact", Push 1, Fetch "i", Sub, Store "i"]], ("","fact=3628800,i=1")),
