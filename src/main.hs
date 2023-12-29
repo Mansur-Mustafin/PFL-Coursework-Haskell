@@ -176,7 +176,7 @@ parseIntVarPar _ = Nothing
 
 --------------------------------------------------------------------------------------------------------------
 -- We should define the levels of operations: 
--- AndTok -> BoolEqTok -> NotTok -> IntEqTok -> LeTok -> BoolLit/VarLit/Pars
+-- AndTok -> BoolEqTok -> NotTok -> IntEqTok / LeTok and BoolLit/VarLit/Pars
 
 getBexp :: [Token] -> (Bexp, [Token])
 getBexp tokens =   
@@ -214,10 +214,7 @@ parseNot (NotTok:restTokens) =
     Just (exp1, restTokens1) -> Just (NegExp exp1, restTokens1)
     result -> result
 
-parseNot tokens = parseLowerNot tokens
-
-parseLowerNot :: [Token] ->  Maybe (Bexp, [Token])
-parseLowerNot tokens = 
+parseNot tokens = 
   case parseIntEqLe tokens of
     Just (exp1, restTokens1) -> Just (exp1, restTokens1)
     Nothing -> case parseBoolVarPars tokens of
@@ -225,7 +222,7 @@ parseLowerNot tokens =
       Nothing -> Nothing
 
 
--- parse Boolean equality
+-- parse Boolean equality and inequality
 parseIntEqLe :: [Token] ->  Maybe (Bexp, [Token])
 parseIntEqLe tokens =
   case parseSumSub tokens of 
