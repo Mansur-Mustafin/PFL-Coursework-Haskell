@@ -119,11 +119,21 @@ buildData list = [stm] ++ buildData restTok
 
 
 getStatement :: [Token] -> (Stm, [Token])
-getStatement list@(WhileTok:rest) = getWhileStatement list -- TODO
-getStatement list@(IfTok:rest) = getIfStatement list -- TODO
-getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list 
+getStatement list@(WhileTok:rest) = getWhileStatement list
+getStatement list@(IfTok:rest) = getIfStatement list
+getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list
+getStatement list@(ForTok:rest) = getForStatement list 
 getStatement list@(OpenTok:rest) = (stm, rest) 
   where (stm, SemiColonTok:rest) = getParenthStatement list
+
+
+getForStatement :: [Token] -> (Stm, [Token])
+getForStatement (ForTok:OpenTok:rest) = (ParenthStm [storeStm, WhileStm bexp (ParenthStm [stms, stepStm])], restTokens)
+  where (storeStm, restTokens1) = getStoreStatement rest
+        (bexp, SemiColonTok:restTokens2) = getBexp restTokens1
+        (stepStm, CloseTok:DoTok:restTokens3) = getStoreStatement restTokens2
+        (stms, restTokens) = getStatement restTokens3
+
 
 getParenthStatement :: [Token] -> (Stm, [Token])
 getParenthStatement (OpenTok:rest) = (ParenthStm stms, restTokens)

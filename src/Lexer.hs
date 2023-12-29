@@ -10,6 +10,7 @@ data Token
   | WhileTok | DoTok
   | IfTok | ThenTok | ElseTok
   | IntTok Integer | VarTok String | BoolTok Bool
+  | ForTok
   deriving (Show, Eq) 
 
 lexer :: String -> [Token]
@@ -41,6 +42,9 @@ lexer ('d':'o':'(':restStr) = DoTok : OpenTok : lexer restStr
 
 lexer ('i':'f':' ':restStr) = IfTok : lexer restStr
 lexer ('i':'f':'(':restStr) = IfTok : OpenTok : lexer restStr
+
+lexer ('f':'o':'r':' ':restStr) = ForTok : lexer restStr
+lexer ('f':'o':'r':'(':restStr) = ForTok : OpenTok : lexer restStr
 
 lexer ('t':'h':'e':'n':' ':restStr) = ThenTok : lexer restStr
 lexer ('t':'h':'e':'n':'(':restStr) = ThenTok : OpenTok : lexer restStr
