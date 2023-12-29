@@ -10,7 +10,7 @@ data Token
   | WhileTok | DoTok
   | IfTok | ThenTok | ElseTok
   | IntTok Integer | VarTok String | BoolTok Bool
-  deriving (Show) 
+  deriving (Show, Eq) 
 
 lexer :: String -> [Token]
 lexer [] = []

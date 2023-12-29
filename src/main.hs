@@ -109,7 +109,7 @@ run (Loop c1 c2:code, stack, storage)
 -- The parser needs to take the precedence of operators into account
 
 parse :: String -> Program
-parse = undefined -- TODO
+parse =  buildData . lexer -- TODO
 
 buildData :: [Token] -> Program
 buildData [] = []
@@ -118,17 +118,27 @@ buildData list = [stm] ++ buildData restTok
 
 
 getStatement :: [Token] -> (Stm, [Token])
-getStatement list@(WhileTok:rst) = getWhileStatement list 
-getStatement list@(IfTok:rst) = getIfStatement list 
+getStatement list@(WhileTok:rest) = getWhileStatement list -- TODO
+getStatement list@(IfTok:rest) = getIfStatement list -- TODO
+getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list 
+
+
+getStoreStatement :: [Token] -> (Stm, [Token])
+getStoreStatement (VarTok var:AssignTok:rest) = (StoreStmA var aexp, restTokens) 
+ where (aexp, SemiColonTok:restTokens) = getAexp rest
+getStoreStatement _ = error "Syntax error: Assign value."
+
+
+getIfStatement :: [Token] -> (Stm, [Token])
+getIfStatement (IfTok:rest) = (IfStm bexp thenStm elseStm, restTokens)
+ where 
+  (bexp, ThenTok:restTokens1) = getBexp rest    -- isso funciona se tem ou nao tem parenteces
+  (thenStm, ElseTok:restTokens2) = undefined    -- aqui e deficil porque podemos ter um 'if' dentro de then, e temos que saber ate onde calcular
+  (elseStm, SemiColonTok:restTokens) = undefined
 
 
 getWhileStatement :: [Token] -> (Stm, [Token])
 getWhileStatement = undefined
-
-getIfStatement :: [Token] -> (Stm, [Token])
-getIfStatement = undefined
-
-
 
 --------------------------------------------------------------------------------------------------------------
 -- We should define the levels of operations: 
@@ -339,3 +349,4 @@ main = do
 
 -- testAssembler $ compA $ fst $ getAexp $ lexer "((2 + 3) * (4 - 1)) + 5" deve dar ("20","")
 -- testAssembler $ compB $ fst $ getBexp $ lexer "not True and 2 <= 5 = 3 == 4" deve dar False
+-- testAssembler $ compile $ buildData $ lexer "x := 3; y := x + 2;" == ("","x=3,y=5")
