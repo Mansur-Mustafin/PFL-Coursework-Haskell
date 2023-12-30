@@ -1,4 +1,5 @@
 -- PFL 2023/24 - Haskell practical assignment
+module Main where
 
 import Pilha
 --import qualified AVLMap as Map
@@ -8,28 +9,44 @@ import Compile
 
 -- Part 1
 
+-- | Defines the storage of the program, where the values of variables are kept
+{-|
+    Defines the storage of the program, where the values of variables are kept.
+    A variable can hold a boolean or integer value
+-}
 type State = (Map.Map String (Either Bool Integer))
+
+-- | Defines the evaluation stack of the program
 type Stack = (Pilha (Either Bool Integer))
 
+-- | Builds an empty evaluation stack to be used throughout the program
 createEmptyStack :: Stack
 createEmptyStack = Pilha.empty
 
+-- | Builds an empty map to be used as the storage throughout the program
 createEmptyState :: State
 createEmptyState = Map.empty
 
-
+-- | Prints the left or right value associated with an Either data variable
 showEither :: (Show a, Show b) => Either a b -> String
 showEither (Left bool) = show bool
 showEither (Right int) = show int
 
-
+{-|
+    Builds a string that represents the contents of the evaluation stack that is given as input.
+    The leftmost value of the string represents the value at the top of the evaluation stack,
+    while the rightmost value represents the value at the bottom of the stack.
+-}
 stack2Str :: Stack -> String
 stack2Str pilha
  | Pilha.isEmpty pilha = ""
  | Pilha.isEmpty $ pop pilha = showEither (top pilha)
  | otherwise = showEither (top pilha) ++ "," ++ stack2Str (pop pilha)
 
-
+{-|
+    Builds a string that represents the contents of the program's storage.
+    Its values are variable-value pairs that are organized in alphabetical order of the variable name.
+-}
 state2Str :: State -> String
 state2Str state
  | Map.isEmpty state = ""
@@ -37,9 +54,14 @@ state2Str state
  where
   showPair (k, val) = k ++ "=" ++ showEither val ++ ","
 
-
+{-|
+    Evaluates the instruction at the head of the list of instructions, which must be a valid instruction from the
+    'Compile.Inst' data type. The instruction updates the evaluation stack and the program's storage accordingly so that
+    it can be used by the next instruction. 
+-}
 run :: (Code, Stack, State) -> (Code, Stack, State)
-run ([], stack, storage) = ([], stack, storage) -- base case
+
+run ([], stack, storage) = ([], stack, storage)
 
 run (Push int:code, stack, storage) = run (code, push (Right int) stack, storage)
 
@@ -101,17 +123,20 @@ run (Loop c1 c2:code, stack, storage)
  = run (c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code, stack, storage)
 
 
--- Part 2
-
+{-|
+    Parses a string that represents a program, tokenizing it and translating it into
+    the correct statements from the 'Compile.Stm', 'Compile.Aexp' and 'Compile.Bexp' data types
+-}
 parse :: String -> Program
-parse =  buildData . lexer -- TODO
+parse =  buildData . lexer
 
+-- | Translates a list of token to the correct statements from the 'Compile.Stm', 'Compile.Aexp' and 'Compile.Bexp' data types
 buildData :: [Token] -> Program
 buildData [] = []
 buildData list = stm : buildData restTok
  where (stm, restTok) = getStatement list
 
--- TODO: add error case
+-- | Builds a valid statement from the 'Compile.Stm' data type with the next tokens that appear in the token list given as input
 getStatement :: [Token] -> (Stm, [Token])
 getStatement list@(WhileTok:rest) = getWhileStatement list
 getStatement list@(IfTok:rest) = getIfStatement list
@@ -119,8 +144,13 @@ getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list
 getStatement list@(ForTok:rest) = getForStatement list
 getStatement list@(OpenTok:rest) = (stm, rest)
   where (stm, SemiColonTok:rest) = getParenthStatement list
+getStatement _ = error "Invalid token used as the beginning of new statement"
 
+{-|
+    Builds a valid 'Compile.WhileStm' with the next tokens that appear in the token list given as input
 
+    This function handles the casa where the 'Compile.WhileStm' is built from a 'Lexer.ForTok'
+-}
 getForStatement :: [Token] -> (Stm, [Token])
 getForStatement (ForTok:OpenTok:rest) = (ParenthStm [storeStm, WhileStm bexp (ParenthStm [stms, stepStm])], restTokens)
   where (storeStm, restTokens1) = getStoreStatement rest
@@ -128,18 +158,28 @@ getForStatement (ForTok:OpenTok:rest) = (ParenthStm [storeStm, WhileStm bexp (Pa
         (stepStm, CloseTok:DoTok:restTokens3) = getStoreStatement restTokens2
         (stms, restTokens) = getStatement restTokens3
 
-
+{-|
+    Builds a valid 'Compile.ParenthStm' with the next tokens that appear in the token list given as input,
+    verifying that the next token that is parsed in a 'Lexer.OpenTok'
+-}
 getParenthStatement :: [Token] -> (Stm, [Token])
 getParenthStatement (OpenTok:rest) = (ParenthStm stms, restTokens)
  where (stms, restTokens) = getStatement' rest
 
+{-|
+    Builds a list of valid statements with the next tokens that appear in the token list given as input, until
+    a 'Lexer.CloseTok' is found. This fetches all statements that are between a pair of correctly matched parentheses.
+-}
 getStatement'  :: [Token] -> ([Stm], [Token])
 getStatement' l@(CloseTok:rest) = ([], rest)
 getStatement' [] = error "Syntax error: unmatch parentheses."
 getStatement' l = (fst (getStatement l) : stms , rest)
  where (stms, rest) =  getStatement' (snd (getStatement l))
 
-
+{-|
+    Builds a valid 'Compile.StoreStmA' or 'Compile.StoreStmB' with the next tokens that appear in the token list given as input.
+    The parser identifies if the statement assigns a boolean or integer value to the chosen variable.
+-}
 getStoreStatement :: [Token] -> (Stm, [Token])
 getStoreStatement (VarTok var:AssignTok:rest) =
   if isBool rest then (case getBexp rest of
@@ -147,12 +187,16 @@ getStoreStatement (VarTok var:AssignTok:rest) =
            (aexp, SemiColonTok:restTokens) -> (StoreStmA var aexp, restTokens)
            _ -> error "Syntax error: Assign value.")
 
-
+{-|
+    Verifies if a token that represents a boolean constant or a boolean operator is found before the next
+    'Lexer.SemiColonTok' is found in the next tokens that appear in the token list given as input. This function
+    is used by 'getStoreStatement' to verify if a store statement assign a boolean or integer value to a certain variable.
+-}
 isBool :: [Token] -> Bool
 isBool (SemiColonTok:r) = False
 isBool (x:xs) = elem x [BoolTok True, BoolTok False, AndTok, BoolEqTok, IntEqTok, LeTok, NotTok] || isBool xs
 
-
+-- | Builds a valid 'Compile.IfStm' with the next tokens that appear in the token list given as input.
 getIfStatement :: [Token] -> (Stm, [Token])
 getIfStatement (IfTok:rest) = (IfStm bexp thenStm elseStm, restTokens)
  where
@@ -162,24 +206,29 @@ getIfStatement (IfTok:rest) = (IfStm bexp thenStm elseStm, restTokens)
                                    else getStatement restTokens1
   (elseStm, restTokens) = getStatement restTokens2
 
+{-|
+    Builds a valid 'Compile.WhileStm' with the next tokens that appear in the token list given as input.
 
+    This function handles the casa where the 'Compile.WhileStm' is built from a 'Lexer.WhileTok'.
+-}
 getWhileStatement :: [Token] -> (Stm, [Token])
 getWhileStatement (WhileTok:rest) = (WhileStm bexp stm, restTokens)
  where
   (bexp, DoTok:restTokens1) = getBexp rest
   (stm, restTokens) = getStatement restTokens1
 
---------------------------------------------------------------------------------------------------------------
--- We should define the levels of operations: 
--- Sum / Sub -> Mult -> IntLit / VarLit / Pars
+{-|
+    Builds a valid 'Compile.Aexp' with the next tokens that appear in the token list given as input.
 
+    This translations takes the precedence of parenthesis and of the arithmetic operators used in the expression into account.
+-}
 getAexp :: [Token] -> (Aexp, [Token])
 getAexp tokens =
   case parseSumSub tokens of
     Just (aExp, tokens) -> (aExp, tokens)
-    _                   -> error "Syntax error: Algebric expression."
+    _                   -> error "Syntax error: Invalid arithmetic expression"
 
--- parse Sum and Substruction 
+-- | Builds a valid 'Compile.AddExp' or 'Compile.SubExp' with the next tokens that appear in the token list given as input.
 parseSumSub :: [Token] ->  Maybe (Aexp, [Token])
 parseSumSub tokens =
   case parseProd tokens of
@@ -193,7 +242,7 @@ parseSumSub tokens =
         Nothing                  -> Nothing
     result -> result
 
--- parse Product
+-- | Builds a valid 'Compile.MultExp' with the next tokens that appear in the token list given as input.
 parseProd :: [Token] ->  Maybe (Aexp, [Token])
 parseProd tokens =
   case parseIntVarPar tokens of
@@ -203,7 +252,11 @@ parseProd tokens =
         Nothing                  -> Nothing
     other -> other
 
--- parse the Integer values or Variables
+{-|
+    Builds a valid 'Compile.IntLit' or 'Compile.VarLitA' with the next tokens that appear in the token list given as input.
+
+    This functions also handles the use of parenthesis in arithmetic expressions.
+-}
 parseIntVarPar :: [Token] -> Maybe (Aexp, [Token])
 parseIntVarPar (IntTok n: restTokens) = Just (IntLit n, restTokens)
 parseIntVarPar (VarTok v: restTokens) = Just (VarLitA v, restTokens)
@@ -213,10 +266,11 @@ parseIntVarPar (OpenTok:restTokens1) =
     _ -> Nothing
 parseIntVarPar _ = Nothing
 
---------------------------------------------------------------------------------------------------------------
--- We should define the levels of operations: 
--- AndTok -> BoolEqTok -> NotTok -> IntEqTok / LeTok and BoolLit/VarLit/Pars
+{-|
+    Builds a valid 'Compile.Bexp' with the next tokens that appear in the token list given as input.
 
+    This translations takes the precedence of parenthesis and of the boolean operators used in the expression into account.
+-}
 getBexp :: [Token] -> (Bexp, [Token])
 getBexp tokens =
   case parseAnd tokens of
@@ -224,7 +278,7 @@ getBexp tokens =
     _                   -> error "Syntax error: Boolean expression."
 
 
--- parse And
+-- | Builds a valid 'Compile.AndExp' with the next tokens that appear in the token list given as input.
 parseAnd :: [Token] ->  Maybe (Bexp, [Token])
 parseAnd tokens =
   case parseBoolEq tokens of
@@ -235,7 +289,7 @@ parseAnd tokens =
     result -> result
 
 
--- parse Boolean equality
+-- | Builds a valid 'Compile.EquExpBool' with the next tokens that appear in the token list given as input.
 parseBoolEq :: [Token] ->  Maybe (Bexp, [Token])
 parseBoolEq tokens =
   case parseNot tokens of
@@ -245,8 +299,12 @@ parseBoolEq tokens =
         Nothing                  -> Nothing
     result -> result
 
+{-|
+    Builds a valid 'Compile.NegExp' with the next tokens that appear in the token list given as input.
 
--- parse Integer equality
+    This function allows the chaining of "not" statements without the use of parenthesis
+    such as "not not True" which evaluates to True.
+-}
 parseNot :: [Token] ->  Maybe (Bexp, [Token])
 parseNot (NotTok:restTokens) =
   case parseNot restTokens of
@@ -261,7 +319,7 @@ parseNot tokens =
       Nothing -> Nothing
 
 
--- parse Boolean equality and inequality
+-- | Builds a valid 'Compile.EquExpInt' or 'Compile.LeExp' with the next tokens that appear in the token list given as input.
 parseIntEqLe :: [Token] ->  Maybe (Bexp, [Token])
 parseIntEqLe tokens =
   case parseSumSub tokens of
@@ -276,7 +334,11 @@ parseIntEqLe tokens =
     _ -> Nothing
 
 
--- parse the Integer values or Variables
+{-|
+    Builds a valid 'Compile.BoolLit' or 'Compile.VarLitB' with the next tokens that appear in the token list given as input.
+
+    This functions also handles the use of parenthesis in boolean expressions.
+-}
 parseBoolVarPars :: [Token] -> Maybe (Bexp, [Token])
 parseBoolVarPars (BoolTok n: restTokens) = Just (BoolLit n, restTokens)
 parseBoolVarPars (VarTok v: restTokens) = Just (VarLitB v, restTokens)
