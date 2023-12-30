@@ -1,3 +1,13 @@
+{-|
+  Module      : Main
+  Description : Holds the main functionality of the project
+  Copyright   : Daniel Ferreira and Mansur Mustafin, 2023
+  Maintainer  : unidsferreira2003@gmail.com and mustafin.mansur02@gmail.com
+
+  This module holds the primary functions used for the whole program, that is, the functions responsible for
+  parsing a string containing the program's input and running a list of instructions built from the parser.
+-}
+
 -- PFL 2023/24 - Haskell practical assignment
 module Main where
 
