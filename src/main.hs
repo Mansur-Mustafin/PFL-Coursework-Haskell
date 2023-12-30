@@ -390,5 +390,5 @@ testParser programCode = (stack2Str stack, state2Str state)
 
 main :: IO ()
 main = do
-    runAllTests (zip [1..] testCasesAssembler) testAssembler
-    runAllTests (zip [1..] testCasesParser) testParser
+    runTests (zip [1..] testCasesAssembler) testAssembler
+    runTests (zip [1..] testCasesParser) testParser

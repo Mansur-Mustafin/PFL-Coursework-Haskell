@@ -12,7 +12,7 @@ testCasesAssembler = [
     ([Push (-20),Tru,Tru,Neg], ("False,True,-20","")),
     ([Push (-20),Tru,Tru,Neg,Equ], ("False,-20","")),
     ([Push (-20),Push (-20),Equ], ("True","")),
-    ([Push (-20),Push (10),Equ], ("False","")),
+    ([Push (-20),Push 10,Equ], ("False","")),
     ([Push (-20),Push (-21), Le], ("True","")),
     ([Push 5,Store "x",Push 1,Fetch "x",Sub,Store "x"], ("","x=4")),
     ([Push 10, Store "i", Push 1, Store "fact", Loop [Push 1, Fetch "i", Equ, Neg] [Fetch "i", Fetch "fact", Mult, Store "fact", Push 1, Fetch "i", Sub, Store "i"]], ("","fact=3628800,i=1")),
@@ -33,7 +33,10 @@ testCasesParser = [
     ( "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" , ("","x=1")),
     ( "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" , ("","x=2")),
     ( "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" , ("","x=2,y=-10,z=6")),
-    ( "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" , ("","fact=3628800,i=1"))
+    ( "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" , ("","fact=3628800,i=1")),
+    ( "x := 12; y := 10; if (True) then ( x := 5; if (True) then y := 5; else z := 10;) else z := 13;", ("","x=5,y=5")),
+    ( "if not not True then x :=1; else x:=2;", ("", "x=1")),
+    ( "if not (not True) then x :=1; else x:=2;", ("", "x=1"))
     ]
 
 runTest :: (Show b, Eq b) => (Int, (c, b)) -> (c -> b) -> IO ()
@@ -43,11 +46,11 @@ runTest (index, (input, expected)) testFunction
  where result = testFunction input
 
 
-runAllTests :: (Show b, Eq b) => [(Int, (c, b))] -> (c -> b) -> IO ()
-runAllTests [] _ = return ()
-runAllTests (test:rest) testFunction = do
+runTests :: (Show b, Eq b) => [(Int, (c, b))] -> (c -> b) -> IO ()
+runTests [] _ = return ()
+runTests (test:rest) testFunction = do
     runTest test testFunction
-    runAllTests rest testFunction
+    runTests rest testFunction
 
 
 -- Examples:
