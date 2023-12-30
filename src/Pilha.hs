@@ -28,11 +28,13 @@ module Pilha (
 data Pilha a = Stk [a] 
                deriving Show
 
+
 {-|
     Creates an empty stack.
 -}
 empty :: Pilha a
 empty = Stk []
+
 
 {-|
     Checks if a stack is empty.
@@ -41,11 +43,13 @@ isEmpty :: Pilha a -> Bool
 isEmpty (Stk []) = True
 isEmpty (Stk _) = False
 
+
 {-|
     Adds a new element to the top of the stack.
 -}
 push :: a -> Pilha a -> Pilha a 
 push x (Stk xs) = Stk (x:xs)
+
 
 {-|
     Removes the top element from the stack.
@@ -56,12 +60,14 @@ pop :: Pilha a -> Pilha a
 pop (Stk (_:xs)) = Stk xs
 pop (Stk []) = error "Pilha.pop: empty stack"
 
+
 {-|
     Returns the top element of the stack.
 -}
 top :: Pilha a -> a
 top (Stk (x:_)) = x
 top (Stk _) = error "Pilha.top: empty stack"
+
 
 {-|
     Retrieves two consecutive 'Right' values from the top of the stack if available.
@@ -73,6 +79,7 @@ top (Stk _) = error "Pilha.top: empty stack"
 get2RightValues :: Pilha (Either a b) -> (b, b, Pilha (Either a b))
 get2RightValues (Stk (Right v1:Right v2:xs)) = (v1, v2, Stk xs)
 get2RightValues (Stk _) = error "Run-time error"
+
 
 {-|
     Retrieves two consecutive 'Left' values from the top of the stack if available.

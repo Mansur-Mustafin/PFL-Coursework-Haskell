@@ -45,7 +45,6 @@ isEmpty Empty = True
 isEmpty _ = False
 
 
-
 {-|
    Inserts a key and a value pair into the map. If the key already exists, it updates the value.
    Ensures that the tree remains balanced after insertion.
@@ -94,6 +93,7 @@ height :: Map k v -> Int
 height Empty = 0
 height (Node _ Empty Empty _) = 1
 height (Node _ _ _ h) = h
+
 
 {-|
     Updates the height of a given node based on its children's heights.
@@ -173,7 +173,6 @@ rotateRightCase node@(Node (k, v) esq dir h) = case balanceFactor dir of
   1  -> let rrDir = llRotation dir
             newHight = updateHeight (Node (k, v) esq rrDir 0)
         in rrRotation $ Node (k, v) esq rrDir newHight
-
 
 
 

@@ -25,11 +25,13 @@ module Map (
 data Map k v = Empty | Node (k,v) (Map k v) (Map k v) 
                deriving Show
 
+
 {-|
     Creates an empty map.
 -}
 empty :: Map k v
 empty = Empty
+
 
 {-|
     Checks if the map is empty.
@@ -37,6 +39,7 @@ empty = Empty
 isEmpty :: Map k v -> Bool 
 isEmpty Empty = True 
 isEmpty _ = False
+
 
 {-|
    Inserts a key and a value pair into the map. If the key already exists, it updates the value.
