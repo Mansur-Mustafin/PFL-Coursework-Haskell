@@ -1,10 +1,10 @@
 {-|
   Module      : Compile
-  Description : Set of functions responsible for translating a list of statements into a list of valid instructions, acting as the program's compiler
+  Description : Set of functions responsible for translating a list of statements into a list of valid instructions, acting as the project's compiler
   Copyright   : Daniel Ferreira and Mansur Mustafin, 2023
   Maintainer  : unidsferreira2003@gmail.com and mustafin.mansur02@gmail.com
 
-  This module acts as the program's compiler holding all functions necessary to transform any statement,
+  This module acts as the project's compiler holding all functions necessary to transform any statement,
   arithmetic expression or boolean expression into the respective valid set of instructions
 -}
 

@@ -1,7 +1,21 @@
+{-|
+  Module      : Lexer
+  Description : Acts as the project's lexer by tokenizing inputs strings with a program
+  Copyright   : Daniel Ferreira and Mansur Mustafin, 2023
+  Maintainer  : unidsferreira2003@gmail.com and mustafin.mansur02@gmail.com
+
+  This module holds functions necessary to extract the tokens from input strings that hold
+  valid programs. It also rejects any program that contains invalid tokens
+-}
+
 module Lexer where 
 
 import Data.Char (isDigit, isLetter, isSpace, isLower, isUpper, digitToInt)
 
+{-|
+    Holds all valid tokens that can be used in a program. Each token has the name of the corresponding operator or constant
+    followed by the suffix "Tok"
+-}
 data Token
   = PlusTok | MinusTok | TimesTok
   | OpenTok | CloseTok | SemiColonTok
@@ -13,6 +27,11 @@ data Token
   | ForTok
   deriving (Show, Eq) 
 
+{-|
+    Translates a program in a string to a list of corresponding valid tokens. 
+    
+    If an invalid token is found an error is displayed.
+-}
 lexer :: String -> [Token]
 lexer [] = []
 lexer ('+':restStr) = PlusTok : lexer restStr
@@ -37,6 +56,11 @@ lexer str@(char:restStr)
                    in getWordToken varStr : lexer restStr
  | otherwise = error "Syntax error: Invalid symbol"
 
+{-|
+    Transforms a word into its corresponding token. The word may be one of the reserved keywords
+    ("not", "and", etc.) or a valid name for a variable, that is, a word that starts with an undercased letter
+    followed by any number of letters, digits and underscores (_).
+-}
 getWordToken :: String -> Token
 getWordToken "and" = AndTok
 getWordToken "not" = NotTok
