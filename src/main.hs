@@ -1,16 +1,15 @@
 -- PFL 2023/24 - Haskell practical assignment quickstart
 -- Updated on 27/12/2023
 
-import Data.List (span)
 import Pilha
+--import qualified AVLMap as Map
 import Map
 import Lexer
 import Compile
-import Debug.Trace (trace)
 
 -- Part 1
 
-type State = (Map String (Either Bool Integer))
+type State = (Map.Map String (Either Bool Integer))
 type Stack = (Pilha (Either Bool Integer))
 
 createEmptyStack :: Stack
@@ -35,7 +34,7 @@ stack2Str pilha
 state2Str :: State -> String
 state2Str state
  | Map.isEmpty state = ""
- | otherwise = init $ concatMap showPair (map2List state)
+ | otherwise = init $ concatMap showPair (Map.map2List state)
  where
   showPair (k, val) = k ++ "=" ++ showEither val ++ ","
 
@@ -84,12 +83,12 @@ run (Neg:code, stack, storage) =
     _         -> error "Run-time error"
 
 run (Fetch key:code, stack, storage) =
-  case find key storage of
+  case Map.find key storage of
     Just value -> run (code, push value stack, storage)
     Nothing    -> error "Run-time error"
 
 run (Store key:code, stack, storage)
- = run (code, pop stack, insert key (top stack) storage)
+ = run (code, pop stack, Map.insert key (top stack) storage)
 
 run (Noop:code, stack, storage) = run (code, stack, storage)
 
@@ -115,7 +114,7 @@ buildData [] = []
 buildData list = stm : buildData restTok
  where (stm, restTok) = getStatement list
 
-
+-- TODO: add error case
 getStatement :: [Token] -> (Stm, [Token])
 getStatement list@(WhileTok:rest) = getWhileStatement list
 getStatement list@(IfTok:rest) = getIfStatement list
@@ -378,12 +377,30 @@ runAllTests (test:rest) = do
     runTest test
     runAllTests rest
 
+
 main :: IO ()
 main = do
     runAllTests $ zip [1..] testCasesCompile1
-    -- Aexp
 
+    print $ testParser "x := 5; x := x - 1;" == ("","x=4")
+    print $ testParser "x := 0 - 2;" == ("","x=-2")
+    print $ testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
+    print $ testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
+    print $ testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
+    print $ testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
+    print $ testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
+    print $ testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
+    print $ testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
+    print $ testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
+    print $ testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
+    print $ testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
 
--- testAssembler $ compA $ fst $ getAexp $ lexer "((2 + 3) * (4 - 1)) + 5" deve dar ("20","")
--- testAssembler $ compB $ fst $ getBexp $ lexer "not True and 2 <= 5 = 3 == 4" deve dar False
--- testAssembler $ compile $ buildData $ lexer "x := 3; y := x + 2;" == ("","x=3,y=5")
+    print $ testAssembler [Push 10,Push 4,Push 3,Sub,Mult] == ("-10","")
+    print $ testAssembler [Fals,Push 3,Tru,Store "var",Store "a", Store "someVar"] == ("","a=3,someVar=False,var=True")
+    print $ testAssembler [Fals,Store "var",Fetch "var"] == ("False","var=False")
+    print $ testAssembler [Push (-20),Tru,Fals] == ("False,True,-20","")
+    print $ testAssembler [Push (-20),Tru,Tru,Neg] == ("False,True,-20","")
+    print $ testAssembler [Push (-20),Tru,Tru,Neg,Equ] == ("False,-20","")
+    print $ testAssembler [Push (-20),Push (-21), Le] == ("True","")
+    print $ testAssembler [Push 5,Store "x",Push 1,Fetch "x",Sub,Store "x"] == ("","x=4")
+    print $ testAssembler [Push 10,Store "i",Push 1,Store "fact",Loop [Push 1,Fetch "i",Equ,Neg] [Fetch "i",Fetch "fact",Mult,Store "fact",Push 1,Fetch "i",Sub,Store "i"]] == ("","fact=3628800,i=1")
