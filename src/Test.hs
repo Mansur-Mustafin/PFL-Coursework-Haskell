@@ -41,13 +41,13 @@ testCasesParser = [
 
 runTest :: (Show b, Eq b) => (Int, (c, b)) -> (c -> b) -> IO ()
 runTest (index, (input, expected)) testFunction
- | result == expected = putStrLn $ "Test " ++ show index ++ " passed."
+ | result == expected = return ()
  | otherwise = putStrLn $ "Test " ++ show index ++ " failed. Expected " ++ show expected ++ " but got " ++ show result
  where result = testFunction input
 
 
 runTests :: (Show b, Eq b) => [(Int, (c, b))] -> (c -> b) -> IO ()
-runTests [] _ = return ()
+runTests [] _ = putStrLn "Tests passed."
 runTests (test:rest) testFunction = do
     runTest test testFunction
     runTests rest testFunction
