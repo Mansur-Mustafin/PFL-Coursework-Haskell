@@ -1,8 +1,8 @@
 {-|
 Module      : Map
 Description : Binary Search Tree Implementation for Map in Haskell
-Copyright   : who
-Maintainer  : who@gmail.com
+Copyright   : Daniel Ferreira and Mansur Mustafin, 2023
+Maintainer  : unidsferreira2003@gmail.com and mustafin.mansur02@gmail.com
 
 This module 'Map' provides a simple binary search tree based map (dictionary) data structure.
 It allows to perform operations like insertion, and lookup in logarithmic time.

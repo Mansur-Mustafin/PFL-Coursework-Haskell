@@ -19,7 +19,7 @@ data Inst =
 -- | Data type that holds all possible representations of an arithmetic expression
 data Aexp
   = IntLit Integer -- ^ Represents an integer literal, e.g. 1
-  | VarLitA String -- ^ Represents a variable in an arithmetic expression, e.g. 1 + **x**
+  | VarLitA String -- ^ Represents a variable in an arithmetic expression, e.g. 1 + x
   | AddExp Aexp Aexp -- ^ Represents an addition between two arithmetic expressions, e.g. 1 + 2
   | SubExp Aexp Aexp -- ^ Represents a subtraction between two arithmetic expressions, e.g. 1 - 2
   | MultExp Aexp Aexp -- ^ Represents a product between two arithmetic expressions, e.g. 1 * 2
@@ -28,12 +28,12 @@ data Aexp
 -- | Data type that holds all possible representations of an boolean expression
 data Bexp
   = BoolLit Bool -- ^ Represents a boolean literal, e.g. True
-  | VarLitB String -- ^ Represents a variable in a boolean expression, e.g. 1 and **x**
-  | AndExp Bexp Bexp -- ^ Represents the **and** logical operation between two boolean expressions, e.g. True and False
-  | NegExp Bexp -- ^ Represents the **not** logical operation between two boolean expressions, e.g. neg True
+  | VarLitB String -- ^ Represents a variable in a boolean expression, e.g. 1 and x
+  | AndExp Bexp Bexp -- ^ Represents the and logical operation between two boolean expressions, e.g. True and False
+  | NegExp Bexp -- ^ Represents the not logical operation between two boolean expressions, e.g. neg True
   | EquExpBool Bexp Bexp -- ^ Represents the equality between two boolean expression, e.g. True == False
   | EquExpInt Aexp Aexp -- ^ Represents the equality between two arithmetic expression, e.g. 1 + 2 == 3
-  | LeExp Aexp Aexp -- ^ Represents the **less than** operation between two arithmetic expressions, e.g. 2 <= 3
+  | LeExp Aexp Aexp -- ^ Represents the less than operation between two arithmetic expressions, e.g. 2 <= 3
   deriving (Show) 
 
 -- | Data type that holds all valid program statements

@@ -1,8 +1,8 @@
 {-|
 Module      : AVLMap
 Description : AVL Tree Implementation for Map in Haskell
-Copyright   : who
-Maintainer  : who@gmail.com
+Copyright   : Daniel Ferreira and Mansur Mustafin, 2023
+Maintainer  : unidsferreira2003@gmail.com and mustafin.mansur02@gmail.com
 
 This module 'AVLMap' provides an AVL tree-based map (dictionary) data structure. 
 It maintains balance to ensure that operations like insertion, deletion, and lookup 

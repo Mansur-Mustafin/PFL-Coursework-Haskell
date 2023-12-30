@@ -1,8 +1,8 @@
 {-|
 Module      : Pilha
 Description : Stack Implementation in Haskell
-Copyright   : who
-Maintainer  : who@gmail.com
+Copyright   : Daniel Ferreira and Mansur Mustafin, 2023
+Maintainer  : unidsferreira2003@gmail.com and mustafin.mansur02@gmail.com
 
 This module 'Pilha' provides a generic stack (LIFO) data structure.
 It allows users to perform basic operations.
