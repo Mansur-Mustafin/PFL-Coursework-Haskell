@@ -16,6 +16,7 @@ import Pilha
 import Map
 import Lexer
 import Compile
+import Test 
 
 -- Part 1
 
@@ -359,26 +360,6 @@ parseBoolVarPars (OpenTok:restTokens1) =
 parseBoolVarPars _ = Nothing
 
 
-
--- ####################################################################################################################
--- #                                                                                                                  #
--- #                                                      Tests                                                       #
--- #                                                                                                                  #
--- ####################################################################################################################
--- Examples:
--- testParser "x := 5;  x := x -1;" == ("","x=4")
--- testParser "x := 0 - 2;" == ("","x=-2")
--- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
--- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
--- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
--- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
--- testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
--- testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
--- testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
--- testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
--- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
--- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
-
 -- Compiler A
 -- (AddExp (IntLit 1) (VarLitA "x"), [Fetch "x", Push 1, Add])
 -- (SubExp (IntLit 1) (VarLitA "x"), [Fetch "x", Push 1, Sub])
@@ -398,68 +379,16 @@ parseBoolVarPars _ = Nothing
 -- ([WhileStm (BoolLit True) (ParenthStm [StoreStmA "x" (IntLit 1), StoreStmB "y" (BoolLit True), IfStm (BoolLit False) (StoreStmA "z" (IntLit 2)) (StoreStmA "z" (IntLit 3))])], [Loop [Tru] [Push 1,Store "x",Tru,Store "y",Fals,Branch [Push 2,Store "z"] [Push 3,Store "z"]]])
 
 
-
--- Examples:
--- testAssembler [Push 1,Push 2,And]                      "Run-time error"
--- testAssembler [Tru,Tru,Store "y", Fetch "x",Tru]       "Run-time error"
--- testAssembler [Push 10,Push 2,Branch [Add] [Sub]]      "Run-time error"
--- testAssembler [Tru,Fals,Neg,Add]                      "Run-time error"
--- testAssembler [Tru,Push 2,Equ]                        "Run-time error"
-
-testCasesCompile1 :: [([Inst], (String, String))]
-testCasesCompile1 = [
-    ([Push 10,Push 4,Push 3,Sub,Mult], ("-10","")),
-    ([Fals,Push 3,Tru,Store "var",Store "a", Store "someVar"], ("","a=3,someVar=False,var=True")),
-    ([Fals,Store "var",Fetch "var"], ("False","var=False")),
-    ([Push (-20),Tru,Fals], ("False,True,-20","")),
-    ([Push (-20),Tru,Tru,Neg], ("False,True,-20","")),
-    ([Push (-20),Tru,Tru,Neg,Equ], ("False,-20","")),
-    ([Push (-20),Push (-20),Equ], ("True","")),
-    ([Push (-20),Push (10),Equ], ("False","")),
-    ([Push (-20),Push (-21), Le], ("True","")),
-    ([Push 5,Store "x",Push 1,Fetch "x",Sub,Store "x"], ("","x=4")),
-    ([Push 10, Store "i", Push 1, Store "fact", Loop [Push 1, Fetch "i", Equ, Neg] [Fetch "i", Fetch "fact", Mult, Store "fact", Push 1, Fetch "i", Sub, Store "i"]], ("","fact=3628800,i=1")),
-    ([Push 10,Push 2,Tru,Branch [Add] [Sub]], ("12","")),
-    ([Push 10,Push 2,Fals,Branch [Add] [Sub]], ("-8",""))
-    ]
-
--- To help you test your assembler
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
   where (_,stack,state) = run (code, createEmptyStack, createEmptyState)
 
--- To help you test your parser
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
   where (_,stack,state) = run (compile (parse programCode), createEmptyStack, createEmptyState)
 
 
-runTest :: (Int, ([Inst], (String, String))) -> IO ()
-runTest (index, (input, expected))
- | result == expected = putStrLn $ "Test " ++ show index ++ " passed."
- | otherwise = putStrLn $ "Test " ++ show index ++ " failed. Expected " ++ show expected ++ " but got " ++ show result
- where result = testAssembler input
-
-runAllTests :: [(Int, ([Inst], (String, String)))] -> IO ()
-runAllTests [] = return ()
-runAllTests (test:rest) = do
-    runTest test
-    runAllTests rest
-
-
 main :: IO ()
 main = do
-    runAllTests $ zip [1..] testCasesCompile1
-
-    print $ testParser "x := 5; x := x - 1;" == ("","x=4")
-    print $ testParser "x := 0 - 2;" == ("","x=-2")
-    print $ testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
-    print $ testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
-    print $ testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
-    print $ testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
-    print $ testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
-    print $ testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
-    print $ testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
-    print $ testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
-    print $ testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
-    print $ testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
+    runAllTests (zip [1..] testCasesAssembler) testAssembler
+    runAllTests (zip [1..] testCasesParser) testParser
