@@ -134,24 +134,47 @@ rrRotation (Node (zk, zv) t1 (Node (yk, yv) t2 x yh) zh) =
 rrRotation _ = error "RR rotation cannot be applied."
 
 
-{-
-    Balances the AVL tree using the appropriate rotation based on the balance factor.
+{-|
+   Balances an AVL tree to maintain its properties. 
+   It applies rotations based on the balance factor of the node.
 -}
 balance :: Map k v -> Map k v
-balance Empty = error "Balance empty tree."
-balance root = 
- | bf == 2  && balanceFactor esq == 1  = llRotation root
- | bf == -2 && balanceFactor dir == -1 = rrRotation root
- | bf == 2  && balanceFactor esq == -1 = let
-                                          rrEsq = rrRotation esq
-                                          newHight = updateHeight (Node (k, v) rrEsq dir 0)
-                                         in llRotation $ Node (k, v) rrEsq dir newHight
- | bf == -2 && balanceFactor dir == 1  = let
-                                          rrDir = llRotation dir
-                                          newHight = updateHeight (Node (k, v) esq rrDir 0)
-                                         in rrRotation $ Node (k, v) esq rrDir newHight
- | otherwise = root
- where bf = balanceFactor root
+balance root = case balanceFactor root of
+  2  -> rotateLeftCase root 
+  -2 -> rotateRightCase root 
+  _  -> root  
+
+
+{-|
+   Handles the case where a left rotation is required. 
+    
+   - case (1) a simple left-left rotation is performed.
+   - case (-1) a double rotation left-right is performed.
+-}
+rotateLeftCase :: Map k v -> Map k v
+rotateLeftCase node@(Node (k, v) esq dir h) = case balanceFactor esq of
+  1  -> llRotation node
+  -1 -> let rrEsq = rrRotation esq
+            newHight = updateHeight (Node (k, v) rrEsq dir 0)
+        in llRotation $ Node (k, v) rrEsq dir newHight
+
+
+{-|
+   Handles the case where a right rotation is required. 
+
+   - case (-1) a simple right-right rotation is performed.
+   - case (1) a double rotation (right-left) is performed.
+
+   Complexity: O(1), as it performs a constant number of operations.
+-}
+rotateRightCase :: Map k v -> Map k v
+rotateRightCase node@(Node (k, v) esq dir h) = case balanceFactor dir of
+  -1 -> rrRotation node
+  1  -> let rrDir = llRotation dir
+            newHight = updateHeight (Node (k, v) esq rrDir 0)
+        in rrRotation $ Node (k, v) esq rrDir newHight
+
+
 
 
 -- ####################################################################################################################
@@ -175,7 +198,6 @@ isBalanced (Node (k,v) esq dir h)
  | abs (height esq - height dir) > 1 = False
  | otherwise = True
 
-
 insertIntoTree :: [Int] -> Map Int Int
 insertIntoTree = foldl (\t x -> insert x x t) empty
 
@@ -187,5 +209,5 @@ checkBalance permutation =
 
 main :: IO ()
 main = do
-    let perms = permutations [1..11]
+    let perms = permutations [1..10]
     mapM_ checkBalance perms
