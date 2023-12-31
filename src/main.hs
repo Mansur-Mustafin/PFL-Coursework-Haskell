@@ -115,12 +115,21 @@ run (Neg:code, stack, storage) =
     _         -> error "Run-time error"
 
 run (Fetch key:code, stack, storage) =
-  case Map.find key storage of
-    Just value -> run (code, push value stack, storage)
-    Nothing    -> error "Run-time error"
+  if last key == '$' 
+    then case top stack of
+      Right index -> fetchValue (key ++ show index) (pop stack)
+      _ -> error "Run-time error"
+  else fetchValue key stack
+  where fetchValue k stk = case Map.find k storage of
+                            Just value -> run (code, push value stk, storage)
+                            Nothing -> error "Run-time error"
 
-run (Store key:code, stack, storage)
- = run (code, pop stack, Map.insert key (top stack) storage)
+run (Store key:code, stack, storage) =
+  if last key == '$'
+    then case top stack of
+      Right index -> run (code, pop . pop $ stack, Map.insert (key++show index) (top . pop $ stack) storage)
+      _ -> error "Run-time error"
+  else run (code, pop stack, Map.insert key (top stack) storage)
 
 run (Noop:code, stack, storage) = run (code, stack, storage)
 
@@ -149,19 +158,17 @@ buildData list = stm : buildData restTok
 
 -- | Builds a valid statement from the 'Compile.Stm' data type with the next tokens that appear in the token list given as input
 getStatement :: [Token] -> (Stm, [Token])
-getStatement list@(WhileTok:rest) = getWhileStatement list
-getStatement list@(IfTok:rest) = getIfStatement list
-getStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = getStoreListStatement list  -- a := [
-getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list
-
--- cases for += -= *=
-getStatement list@(VarTok var:PlusTok:BoolEqTok:rest) = getIncrPlusStatement list
-getStatement list@(VarTok var:MinusTok:BoolEqTok:rest) = getIncrMinusStatement list
-getStatement list@(VarTok var:TimesTok:BoolEqTok:rest) = getIncrMultStatement list
-
-getStatement list@(ForTok:rest) = getForStatement list
-getStatement list@(OpenTok:rest) = (stm, rest)
-  where (stm, SemiColonTok:rest) = getParenthStatement list
+getStatement list@(WhileTok:rest) = getWhileStatement list                            -- while
+getStatement list@(IfTok:rest) = getIfStatement list                                  -- if 
+getStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = getStoreListStatement list  -- v := [
+getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list                -- x := 
+getStatement list@(VarTok var:DollarTok:rest) = getUpdateVectorStatement list         -- x$
+getStatement list@(VarTok var:PlusTok:BoolEqTok:rest) = getIncrPlusStatement list     -- x +=  
+getStatement list@(VarTok var:MinusTok:BoolEqTok:rest) = getIncrMinusStatement list   -- x -= 
+getStatement list@(VarTok var:TimesTok:BoolEqTok:rest) = getIncrMultStatement list    -- x *= 
+getStatement list@(ForTok:rest) = getForStatement list                                -- for 
+getStatement list@(OpenTok:rest) = (stm, rest)                                        -- (
+  where (stm, SemiColonTok:rest) = getParenthStatement list                           -- TODO se nao tiver ; ele vai dar erro de haskell
 getStatement _ = error "Invalid token used as the beginning of new statement"
 
 {-|
@@ -173,7 +180,11 @@ getForStatement :: [Token] -> (Stm, [Token])
 getForStatement (ForTok:OpenTok:rest) = (ParenthStm [storeStm, WhileStm bexp (ParenthStm [stms, stepStm])], restTokens)
   where (storeStm, restTokens1) = getStoreStatement rest
         (bexp, SemiColonTok:restTokens2) = getBexp restTokens1
-        (stepStm, CloseTok:DoTok:restTokens3) = getStoreStatement restTokens2
+        (stepStm, CloseTok:DoTok:restTokens3) = case restTokens2 of
+            (VarTok var:AssignTok:rest) -> getStoreStatement restTokens2
+            (VarTok var:PlusTok:BoolEqTok:rest) -> getIncrPlusStatement restTokens2
+            (VarTok var:MinusTok:BoolEqTok:rest) -> getIncrMinusStatement restTokens2
+            (VarTok var:TimesTok:BoolEqTok:rest) ->  getIncrMultStatement restTokens2
         (stms, restTokens) = getStatement restTokens3
 
 {-|
@@ -205,6 +216,7 @@ getStoreStatement (VarTok var:AssignTok:rest) =
            (aexp, SemiColonTok:restTokens) -> (StoreStmA var aexp, restTokens)
            _ -> error "Syntax error: Assign value.")
 
+-- cases for +=
 getIncrPlusStatement :: [Token] -> (Stm, [Token])
 getIncrPlusStatement list@(VarTok var:PlusTok:BoolEqTok:rest) = 
   case getAexp rest of
@@ -272,6 +284,13 @@ getWhileStatement (WhileTok:rest) = (WhileStm bexp stm, restTokens)
   (bexp, DoTok:restTokens1) = getBexp rest
   (stm, restTokens) = getStatement restTokens1
 
+getUpdateVectorStatement :: [Token] -> (Stm, [Token])
+getUpdateVectorStatement list@(VarTok var:DollarTok:rest) = 
+  case getAexp rest of 
+    (index, AssignTok : restTokens1) -> 
+      case getAexp restTokens1 of
+        (valor, SemiColonTok: restTokens) -> (VarlitAVecorStore valor index (var++"$"), restTokens)
+
 {-|
     Builds a valid 'Compile.Aexp' with the next tokens that appear in the token list given as input.
 
@@ -313,11 +332,22 @@ parseProd tokens =
     This functions also handles the use of parenthesis in arithmetic expressions.
 -}
 parseIntVarPar :: [Token] -> Maybe (Aexp, [Token])
-parseIntVarPar (IntTok n: restTokens) = Just (IntLit n, restTokens)
-parseIntVarPar (VarTok v: restTokens) = Just (VarLitA v, restTokens)
-parseIntVarPar (OpenTok:restTokens1) =
-  case parseSumSub restTokens1 of
-    Just (exp1, CloseTok:restTokens2) -> Just (exp1, restTokens2)
+parseIntVarPar (IntTok n: restTokens) = Just (IntLit n, restTokens)         -- 2
+
+parseIntVarPar (VarTok v: DollarTok : VarTok index:tokens) = 
+  Just (VarlitAVecorFetch (VarLitA index) (v ++ "$"), tokens)                        -- vector$index
+
+parseIntVarPar (VarTok v: DollarTok : IntTok index:tokens) = 
+  Just (VarlitAVecorFetch (IntLit index) (v ++ "$"), tokens)                         -- vector$2
+
+parseIntVarPar (VarTok v: DollarTok : OpenTok : tokens) = case getAexp tokens of      -- vector$Aexp
+  (aexp, CloseTok : restTokens) -> Just (VarlitAVecorFetch aexp (v ++ "$"), restTokens)
+  _ -> Nothing
+
+parseIntVarPar (VarTok v: tokens) = Just (VarLitA v, tokens)
+parseIntVarPar (OpenTok:tokens) =
+  case parseSumSub tokens of
+    Just (exp1, CloseTok:restTokens1) -> Just (exp1, restTokens1)
     _ -> Nothing
 parseIntVarPar _ = Nothing
 

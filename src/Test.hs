@@ -17,7 +17,8 @@ testCasesAssembler = [
     ([Push 5,Store "x",Push 1,Fetch "x",Sub,Store "x"], ("","x=4")),
     ([Push 10, Store "i", Push 1, Store "fact", Loop [Push 1, Fetch "i", Equ, Neg] [Fetch "i", Fetch "fact", Mult, Store "fact", Push 1, Fetch "i", Sub, Store "i"]], ("","fact=3628800,i=1")),
     ([Push 10,Push 2,Tru,Branch [Add] [Sub]], ("12","")),
-    ([Push 10,Push 2,Fals,Branch [Add] [Sub]], ("-8",""))
+    ([Push 10,Push 2,Fals,Branch [Add] [Sub]], ("-8","")),
+    ([Push 123, Store "vector$2", Push 2, Fetch "vector$"], ("123","vector$2=123"))
     ]
 
 testCasesParser :: [(String, (String, String))]
@@ -62,3 +63,16 @@ runTests (test:rest) testFunction = do
 -- testAssembler [Push 10,Push 2,Branch [Add] [Sub]]      "Run-time error"
 -- testAssembler [Tru,Fals,Neg,Add]                       "Run-time error"
 -- testAssembler [Tru,Push 2,Equ]                         "Run-time error"
+
+
+
+
+program1 :: String
+program1 = " list := [1,2,3,4,5,6,7,8,9,10];                    \
+          \  sum := 0;                                          \
+          \  for (index := 0; index <= 9; index += 1;)          \
+          \                                                     \
+          \  do(                                                \
+          \      sum += list$index;                             \
+          \  );"
+
