@@ -26,6 +26,7 @@ data Token
   | IntTok Integer | VarTok String | BoolTok Bool
   | ForTok
   | OpenSqTok | CloseSqTok | CommaTok | DollarTok
+  | AssignPlusTok | AssignSubTok | AssignProdTok
   deriving (Show, Eq) 
 
 {-|
@@ -35,6 +36,9 @@ data Token
 -}
 lexer :: String -> [Token]
 lexer [] = []
+lexer ('+':'=':restStr) = AssignPlusTok : lexer restStr
+lexer ('-':'=':restStr) = AssignSubTok : lexer restStr
+lexer ('*':'=':restStr) = AssignProdTok : lexer restStr
 lexer ('+':restStr) = PlusTok : lexer restStr
 lexer ('-':restStr) = MinusTok : lexer restStr
 lexer ('*':restStr) = TimesTok : lexer restStr

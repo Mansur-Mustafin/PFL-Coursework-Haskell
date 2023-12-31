@@ -163,9 +163,9 @@ getStatement list@(IfTok:rest) = getIfStatement list                            
 getStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = getStoreListStatement list  -- v := [
 getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list                -- x := 
 getStatement list@(VarTok var:DollarTok:rest) = getUpdateVectorStatement list         -- x$
-getStatement list@(VarTok var:PlusTok:BoolEqTok:rest) = getIncrPlusStatement list     -- x +=  
-getStatement list@(VarTok var:MinusTok:BoolEqTok:rest) = getIncrMinusStatement list   -- x -= 
-getStatement list@(VarTok var:TimesTok:BoolEqTok:rest) = getIncrMultStatement list    -- x *= 
+getStatement list@(VarTok var:AssignPlusTok:rest) = getIncrPlusStatement list     -- x +=  
+getStatement list@(VarTok var:AssignSubTok:rest) = getIncrMinusStatement list   -- x -= 
+getStatement list@(VarTok var:AssignProdTok:rest) = getIncrMultStatement list    -- x *= 
 getStatement list@(ForTok:rest) = getForStatement list                                -- for 
 getStatement list@(OpenTok:rest) = (stm, rest)                                        -- (
   where (stm, SemiColonTok:rest) = getParenthStatement list                           -- TODO se nao tiver ; ele vai dar erro de haskell
@@ -182,9 +182,9 @@ getForStatement (ForTok:OpenTok:rest) = (ParenthStm [storeStm, WhileStm bexp (Pa
         (bexp, SemiColonTok:restTokens2) = getBexp restTokens1
         (stepStm, CloseTok:DoTok:restTokens3) = case restTokens2 of
             (VarTok var:AssignTok:rest) -> getStoreStatement restTokens2
-            (VarTok var:PlusTok:BoolEqTok:rest) -> getIncrPlusStatement restTokens2
-            (VarTok var:MinusTok:BoolEqTok:rest) -> getIncrMinusStatement restTokens2
-            (VarTok var:TimesTok:BoolEqTok:rest) ->  getIncrMultStatement restTokens2
+            (VarTok var:AssignPlusTok:rest) -> getIncrPlusStatement restTokens2
+            (VarTok var:AssignSubTok:rest) -> getIncrMinusStatement restTokens2
+            (VarTok var:AssignProdTok:rest) ->  getIncrMultStatement restTokens2
         (stms, restTokens) = getStatement restTokens3
 
 {-|
@@ -218,17 +218,17 @@ getStoreStatement (VarTok var:AssignTok:rest) =
 
 -- cases for +=
 getIncrPlusStatement :: [Token] -> (Stm, [Token])
-getIncrPlusStatement list@(VarTok var:PlusTok:BoolEqTok:rest) = 
+getIncrPlusStatement list@(VarTok var:AssignPlusTok:rest) = 
   case getAexp rest of
     (aexp, SemiColonTok:restTokens) -> (StoreStmA var (AddExp (VarLitA var) aexp), restTokens)
 
 getIncrMultStatement :: [Token] -> (Stm, [Token])
-getIncrMultStatement list@(VarTok var:TimesTok:BoolEqTok:rest) = 
+getIncrMultStatement list@(VarTok var:AssignProdTok:rest) = 
   case getAexp rest of
     (aexp, SemiColonTok:restTokens) -> (StoreStmA var (MultExp (VarLitA var) aexp), restTokens)
 
 getIncrMinusStatement :: [Token] -> (Stm, [Token])
-getIncrMinusStatement list@(VarTok var:MinusTok:BoolEqTok:rest) = 
+getIncrMinusStatement list@(VarTok var:AssignSubTok:rest) = 
   case getAexp rest of
     (aexp, SemiColonTok:restTokens) -> (StoreStmA var (SubExp (VarLitA var) aexp), restTokens)
 
