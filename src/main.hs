@@ -252,16 +252,14 @@ getStoreListStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = (ParenthStm s
 
 
 buildStoreStatements :: [Token] -> String -> Int -> ([Stm],[Token])
-buildStoreStatements (IntTok intValue:CommaTok:rest) prefix index = 
-  (StoreStmA varName (IntLit intValue) : stms , restTokens)
+buildStoreStatements tokens prefix index = 
+  case getAexp tokens of
+    (exp1, CloseSqTok:SemiColonTok:restTokens) -> ([StoreStmA varName exp1], restTokens)
+    (exp1, CommaTok:restTokens1) -> let (stms, restTokens) = buildStoreStatements restTokens1 prefix (index + 1)
+                                        in (StoreStmA varName exp1 : stms , restTokens)
+    _ -> error "Invalid list syntax"
   where
-    (stms, restTokens) = buildStoreStatements rest prefix (index + 1)
     varName = prefix ++ "$" ++ show index
-
-buildStoreStatements (IntTok intValue:CloseSqTok:SemiColonTok:restTokens) prefix index = 
-  let varName = (prefix ++ "$" ++ show index)
-  in ([StoreStmA varName (IntLit intValue)], restTokens)
-
 
 -- | Builds a valid 'Compile.IfStm' with the next tokens that appear in the token list given as input.
 getIfStatement :: [Token] -> (Stm, [Token])
