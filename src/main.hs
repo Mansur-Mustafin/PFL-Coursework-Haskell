@@ -153,6 +153,12 @@ getStatement list@(WhileTok:rest) = getWhileStatement list
 getStatement list@(IfTok:rest) = getIfStatement list
 getStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = getStoreListStatement list  -- a := [
 getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list
+
+-- cases for += -= *=
+getStatement list@(VarTok var:PlusTok:BoolEqTok:rest) = getIncrPlusStatement list
+getStatement list@(VarTok var:MinusTok:BoolEqTok:rest) = getIncrMinusStatement list
+getStatement list@(VarTok var:TimesTok:BoolEqTok:rest) = getIncrMultStatement list
+
 getStatement list@(ForTok:rest) = getForStatement list
 getStatement list@(OpenTok:rest) = (stm, rest)
   where (stm, SemiColonTok:rest) = getParenthStatement list
@@ -198,6 +204,22 @@ getStoreStatement (VarTok var:AssignTok:rest) =
            (bexp, SemiColonTok:restTokens) -> (StoreStmB var bexp, restTokens)) else (case getAexp rest of
            (aexp, SemiColonTok:restTokens) -> (StoreStmA var aexp, restTokens)
            _ -> error "Syntax error: Assign value.")
+
+getIncrPlusStatement :: [Token] -> (Stm, [Token])
+getIncrPlusStatement list@(VarTok var:PlusTok:BoolEqTok:rest) = 
+  case getAexp rest of
+    (aexp, SemiColonTok:restTokens) -> (StoreStmA var (AddExp (VarLitA var) aexp), restTokens)
+
+getIncrMultStatement :: [Token] -> (Stm, [Token])
+getIncrMultStatement list@(VarTok var:TimesTok:BoolEqTok:rest) = 
+  case getAexp rest of
+    (aexp, SemiColonTok:restTokens) -> (StoreStmA var (MultExp (VarLitA var) aexp), restTokens)
+
+getIncrMinusStatement :: [Token] -> (Stm, [Token])
+getIncrMinusStatement list@(VarTok var:MinusTok:BoolEqTok:rest) = 
+  case getAexp rest of
+    (aexp, SemiColonTok:restTokens) -> (StoreStmA var (SubExp (VarLitA var) aexp), restTokens)
+
 
 {-|
     Verifies if a token that represents a boolean constant or a boolean operator is found before the next

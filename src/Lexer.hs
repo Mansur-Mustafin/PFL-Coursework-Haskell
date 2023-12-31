@@ -46,7 +46,6 @@ lexer ('=':restStr) = BoolEqTok : lexer restStr
 lexer ('<':'=':restStr) = LeTok : lexer restStr
 lexer (':':'=':restStr) = AssignTok : lexer restStr
 
-lexer ('$':restStr) = DollarTok : lexer restStr
 lexer ('[':restStr) = OpenSqTok : lexer restStr
 lexer (']':restStr) = CloseSqTok : lexer restStr
 lexer (',':restStr) = CommaTok : lexer restStr

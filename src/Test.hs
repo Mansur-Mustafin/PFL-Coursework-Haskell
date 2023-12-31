@@ -36,7 +36,10 @@ testCasesParser = [
     ( "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" , ("","fact=3628800,i=1")),
     ( "x := 12; y := 10; if (True) then ( x := 5; if (True) then y := 5; else z := 10;) else z := 13;", ("","x=5,y=5")),
     ( "if not not True then x :=1; else x:=2;", ("", "x=1")),
-    ( "if not (not True) then x :=1; else x:=2;", ("", "x=1"))
+    ( "if not (not True) then x :=1; else x:=2;", ("", "x=1")),
+    ( "x := 2; x += 2 + 3 * 2;", ("", "x=10")),
+    ( "x := 2; x -= 2 + 3 * 2;", ("", "x=-6")),
+    ( "x := 2; x *= 2 + 3 * 2;", ("", "x=16"))
     ]
 
 runTest :: (Show b, Eq b) => (Int, (c, b)) -> (c -> b) -> IO ()
