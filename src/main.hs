@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}  -- TODO: delete this
 {-|
   Module      : Main
   Description : Holds the main functionality of the project
@@ -16,7 +17,7 @@ import Pilha
 import Map
 import Lexer
 import Compile
-import Test 
+import Test
 
 -- Part 1
 
@@ -103,7 +104,6 @@ run (Le:code, stack, storage)
  | otherwise = run (code, push (Left False) newStack, storage)
  where (v1, v2, newStack) = get2RightValues stack
 
-
 run (And:code, stack, storage)
  | v1 && v2 = run (code, push (Left True) newStack, storage)
  | otherwise = run (code, push (Left False) newStack, storage)
@@ -151,6 +151,7 @@ buildData list = stm : buildData restTok
 getStatement :: [Token] -> (Stm, [Token])
 getStatement list@(WhileTok:rest) = getWhileStatement list
 getStatement list@(IfTok:rest) = getIfStatement list
+getStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = getStoreListStatement list  -- a := [
 getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list
 getStatement list@(ForTok:rest) = getForStatement list
 getStatement list@(OpenTok:rest) = (stm, rest)
@@ -206,6 +207,27 @@ getStoreStatement (VarTok var:AssignTok:rest) =
 isBool :: [Token] -> Bool
 isBool (SemiColonTok:r) = False
 isBool (x:xs) = elem x [BoolTok True, BoolTok False, AndTok, BoolEqTok, IntEqTok, LeTok, NotTok] || isBool xs
+
+{-|
+    Description 
+-}
+getStoreListStatement :: [Token] -> (Stm, [Token])
+getStoreListStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = (ParenthStm stms, restTokens)
+ where
+  (stms, restTokens) = buildStoreStatements rest var 0
+
+
+buildStoreStatements :: [Token] -> String -> Int -> ([Stm],[Token])
+buildStoreStatements (IntTok intValue:CommaTok:rest) prefix index = 
+  (StoreStmA varName (IntLit intValue) : stms , restTokens)
+  where
+    (stms, restTokens) = buildStoreStatements rest prefix (index + 1)
+    varName = prefix ++ "$" ++ show index
+
+buildStoreStatements (IntTok intValue:CloseSqTok:SemiColonTok:restTokens) prefix index = 
+  let varName = (prefix ++ "$" ++ show index)
+  in ([StoreStmA varName (IntLit intValue)], restTokens)
+
 
 -- | Builds a valid 'Compile.IfStm' with the next tokens that appear in the token list given as input.
 getIfStatement :: [Token] -> (Stm, [Token])
