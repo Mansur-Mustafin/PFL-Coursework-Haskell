@@ -20,7 +20,6 @@ data Inst =
 data Aexp
   = IntLit Integer -- ^ Represents an integer literal, e.g. 1
   | VarLitA String -- ^ Represents a variable in an arithmetic expression, e.g. 1 + x
-  | VarlitAVecorFetch Aexp String
   | AddExp Aexp Aexp -- ^ Represents an addition between two arithmetic expressions, e.g. 1 + 2
   | SubExp Aexp Aexp -- ^ Represents a subtraction between two arithmetic expressions, e.g. 1 - 2
   | MultExp Aexp Aexp -- ^ Represents a product between two arithmetic expressions, e.g. 1 * 2
@@ -40,42 +39,39 @@ data Bexp
 -- | Data type that holds all valid program statements
 data Stm
   = StoreStmA String Aexp -- ^ Represents an integer assignment, e.g. x := 1 + 2
-  | VarlitAVecorStore Aexp Aexp String
   | StoreStmB String Bexp -- ^ Represents a boolean assignment, e.g. x := True and False
   | ParenthStm [Stm] -- ^ Represents a chain of statements between parentheses, e.g. (x := 2; y := True and False)
   | IfStm Bexp Stm Stm -- ^ Represents an if-then-else statement, e.g. if True then x := 2 else x := 3
   | WhileStm Bexp Stm -- ^ Represents a while statement, e.g. while True do x := x + 1
   deriving (Show) 
 
--- Defines a program as a list of statements
+-- | Defines a program as a list of statements
 type Program = [Stm]
 
--- Defines the program's code as a list of instructions
+-- | Defines the program's code as a list of instructions
 type Code = [Inst]
 
--- Translates a list of statements into the respective valid list of instructions
+-- | Translates a list of statements into the respective valid list of instructions
 compile :: Program -> Code
 compile prog = concatMap compileStm prog
 
--- Translates a statement from 'Stm' into the respective valid list of instructions
+-- | Translates a statement from 'Stm' into the respective valid list of instructions
 compileStm :: Stm -> Code
 compileStm (StoreStmA var aexp) = compA aexp ++ [Store var]
-compileStm (VarlitAVecorStore valor index var) = compA valor ++ compA index ++ [Store var]
 compileStm (StoreStmB var bexp) = compB bexp ++ [Store var]
 compileStm (ParenthStm stms) = compile stms
 compileStm (IfStm bexp stm1 stm2) = compB bexp ++ [Branch (compileStm stm1) (compileStm stm2)]
 compileStm (WhileStm bexp stm) = [Loop (compB bexp) (compileStm stm)]
 
--- Translates an arithmetic expression from 'Aexp' into the respective valid list of instructions
+-- | Translates an arithmetic expression from 'Aexp' into the respective valid list of instructions
 compA :: Aexp -> Code
 compA (IntLit n) = [Push n]
 compA (VarLitA var) = [Fetch var]
 compA (AddExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Add]
 compA (SubExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Sub]
 compA (MultExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Mult]
-compA (VarlitAVecorFetch aexp var) = compA aexp ++ [Fetch var]
 
--- Translates a boolean expression from 'Bexp' into the respective valid list of instructions
+-- | Translates a boolean expression from 'Bexp' into the respective valid list of instructions
 compB :: Bexp -> Code
 compB (BoolLit val) = if val then [Tru] else [Fals]
 compB (VarLitB var) = [Fetch var]

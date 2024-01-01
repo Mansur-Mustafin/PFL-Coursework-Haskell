@@ -24,10 +24,6 @@ data Token
   | WhileTok | DoTok
   | IfTok | ThenTok | ElseTok
   | IntTok Integer | VarTok String | BoolTok Bool
-  | ForTok
-  | OpenSqTok | CloseSqTok | CommaTok | DollarTok
-  | AssignPlusTok | AssignSubTok | AssignProdTok
-  | ListTok
   deriving (Show, Eq) 
 
 {-|
@@ -37,9 +33,6 @@ data Token
 -}
 lexer :: String -> [Token]
 lexer [] = []
-lexer ('+':'=':restStr) = AssignPlusTok : lexer restStr
-lexer ('-':'=':restStr) = AssignSubTok : lexer restStr
-lexer ('*':'=':restStr) = AssignProdTok : lexer restStr
 lexer ('+':restStr) = PlusTok : lexer restStr
 lexer ('-':restStr) = MinusTok : lexer restStr
 lexer ('*':restStr) = TimesTok : lexer restStr
@@ -51,21 +44,16 @@ lexer ('=':restStr) = BoolEqTok : lexer restStr
 lexer ('<':'=':restStr) = LeTok : lexer restStr
 lexer (':':'=':restStr) = AssignTok : lexer restStr
 
-lexer ('$':restStr) = DollarTok : lexer restStr
-lexer ('[':restStr) = OpenSqTok : lexer restStr
-lexer (']':restStr) = CloseSqTok : lexer restStr
-lexer (',':restStr) = CommaTok : lexer restStr
-
 lexer str@(char:restStr)
  | isSpace char = lexer restStr
  | isDigit char = let (digStr, restStr) = span isDigit str
                       stringToInt = foldl (\acc chr -> 10 * acc + fromIntegral (digitToInt chr)) 0
                   in if null restStr || not (head restStr == '_' || isLetter (head restStr))
                       then IntTok (stringToInt digStr) : lexer restStr
-                     else error "Syntax error: Variables cannot start with a digit"
+                     else error "Run-time error"
  | isLetter char = let (varStr, restStr) = span (\x -> isLetter x || isDigit x || x == '_') str
                    in getWordToken varStr : lexer restStr
- | otherwise = error "Syntax error: Invalid symbol"
+ | otherwise = error "Run-time error"
 
 {-|
     Transforms a word into its corresponding token. The word may be one of the reserved keywords
@@ -80,9 +68,7 @@ getWordToken "do" = DoTok
 getWordToken "if" = IfTok
 getWordToken "then" = ThenTok
 getWordToken "else" = ElseTok
-getWordToken "for" = ForTok
 getWordToken "True" = BoolTok True
 getWordToken "False" = BoolTok False
-getWordToken "list" = ListTok
 getWordToken str@(first:rest) | isLower first = VarTok str
-getWordToken _ = error "Syntax error: Invalid symbol"
+getWordToken _ = error "Run-time error"

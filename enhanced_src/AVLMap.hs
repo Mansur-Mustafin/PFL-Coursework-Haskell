@@ -21,8 +21,6 @@ module AVLMap (
 ) where
 
 
-import Data.List (permutations) -- TODO delete this
-
 {-|
     An AVL tree where 'k' is the key, 'v' is the value, and 'Int' is the height of the node.
 -}
@@ -173,40 +171,3 @@ rotateRightCase node@(Node (k, v) esq dir h) = case balanceFactor dir of
   1  -> let rrDir = llRotation dir
             newHight = updateHeight (Node (k, v) esq rrDir 0)
         in rrRotation $ Node (k, v) esq rrDir newHight
-
-
-
--- ####################################################################################################################
--- #                                                                                                                  #
--- #                                                      Tests                                                       #
--- #                                                                                                                  #
--- ####################################################################################################################
-
-
-height' :: Map k v -> Int
-height' Empty = 0
-height' (Node _ Empty Empty _) = 1
-height' (Node _ l r _) = 1 + max (height' l) (height' r)
-
--- Check if a tree is balanced
-isBalanced :: Map k v -> Bool
-isBalanced Empty = True
-isBalanced (Node (k,v) esq dir h)
- | not (isBalanced esq && isBalanced dir) = False
- | abs (height' esq - height' dir) > 1 = False
- | abs (height esq - height dir) > 1 = False
- | otherwise = True
-
-insertIntoTree :: [Int] -> Map Int Int
-insertIntoTree = foldl (\t x -> insert x x t) empty
-
-checkBalance :: [Int] -> IO ()
-checkBalance permutation =
-    if isBalanced (insertIntoTree permutation)
-    then return ()
-    else putStrLn ("test failed: " ++ show permutation)
-
-main :: IO ()
-main = do
-    let perms = permutations [1..10]
-    mapM_ checkBalance perms

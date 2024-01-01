@@ -58,7 +58,7 @@ push x (Stk xs) = Stk (x:xs)
 -}
 pop :: Pilha a -> Pilha a
 pop (Stk (_:xs)) = Stk xs
-pop (Stk []) = error "Pilha.pop: empty stack"
+pop (Stk []) = error "Run-time error"
 
 
 {-|
@@ -66,7 +66,7 @@ pop (Stk []) = error "Pilha.pop: empty stack"
 -}
 top :: Pilha a -> a
 top (Stk (x:_)) = x
-top (Stk _) = error "Pilha.top: empty stack"
+top (Stk _) = error "Run-time error"
 
 
 {-|
