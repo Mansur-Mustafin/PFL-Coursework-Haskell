@@ -25,6 +25,9 @@ data Token
   | IfTok | ThenTok | ElseTok
   | IntTok Integer | VarTok String | BoolTok Bool
   | ForTok
+  | OpenSqTok | CloseSqTok | CommaTok | DollarTok
+  | AssignPlusTok | AssignSubTok | AssignProdTok
+  | ListTok
   deriving (Show, Eq) 
 
 {-|
@@ -34,6 +37,9 @@ data Token
 -}
 lexer :: String -> [Token]
 lexer [] = []
+lexer ('+':'=':restStr) = AssignPlusTok : lexer restStr
+lexer ('-':'=':restStr) = AssignSubTok : lexer restStr
+lexer ('*':'=':restStr) = AssignProdTok : lexer restStr
 lexer ('+':restStr) = PlusTok : lexer restStr
 lexer ('-':restStr) = MinusTok : lexer restStr
 lexer ('*':restStr) = TimesTok : lexer restStr
@@ -44,6 +50,11 @@ lexer ('=':'=':restStr) = IntEqTok : lexer restStr
 lexer ('=':restStr) = BoolEqTok : lexer restStr
 lexer ('<':'=':restStr) = LeTok : lexer restStr
 lexer (':':'=':restStr) = AssignTok : lexer restStr
+
+lexer ('$':restStr) = DollarTok : lexer restStr
+lexer ('[':restStr) = OpenSqTok : lexer restStr
+lexer (']':restStr) = CloseSqTok : lexer restStr
+lexer (',':restStr) = CommaTok : lexer restStr
 
 lexer str@(char:restStr)
  | isSpace char = lexer restStr
@@ -72,5 +83,6 @@ getWordToken "else" = ElseTok
 getWordToken "for" = ForTok
 getWordToken "True" = BoolTok True
 getWordToken "False" = BoolTok False
+getWordToken "list" = ListTok
 getWordToken str@(first:rest) | isLower first = VarTok str
 getWordToken _ = error "Syntax error: Invalid symbol"
