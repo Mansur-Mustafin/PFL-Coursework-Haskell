@@ -5,8 +5,6 @@
   * [Daniel dos Santos Ferreira](https://github.com/dsantosferreira) - up202108771 (50%)
   * [Mansur Mustafin](https://github.com/Mansur-Mustafin) - up202102355 (50%)
 
-TODO: describe the strategy used for solving both parts of the assignment, detailing the decisions made when defining the data and functions defined in the program
-
 ## Problem description
 
 This project was divided in two parts:
@@ -64,5 +62,5 @@ In this project, we decided to implement a set of extra features which can be fo
 
 - **AVL tree**: instead of using the tree in the /src folder, which can become unbalanced pretty easily, we implemented an AVL tree so the storage of variables becomes more efficient;
 - **For cycles**: we implemented the use of for cycles so that programs with the following syntax `z := 0; for (i := 0; i <= 2; i := i + 1) do z := z + 1;` can be run on our machine. In this example the evaluation stack and state will have the following contents `("","i=3,z=3")`. To implement this we simply worked on the parser to identify the syntax we gave to *for loops* and translated those tokens into a while statement;
-- **List syntax**: we also allow users to use lists in our program `a := [1, 2, 3, 4]; b := a[1] + a[1 + 2];`. In this example the evaluation stack will have the following contents `TODO: meter aqui resultado e escrever como foi implementado`;
-- **New assignment operations**: we implemented addition assignment "+=", subtraction assignment "-=" and product assignment "*=" to achieve the following syntax `"z := 0; for (i := 0; i <= 2; i += 1) do z := z + 1;"`
+- **List syntax**: we also allow users to use lists with integers in our program `a := [1, 2, 3, 4]; b := a$1 + a$2 + 5;`. For example, the first element in the list is "a$0". In this example the evaluation stack will have the following contents `("","a$0=1,a$1=2,a$2=3,a$3=4,b=10")`. We represented a list in the machine's storage as different variables with the following name "variable_name$index". A value from the list can be accessed by using the variable's name followed by a dollar sigh '$' and the index of the value. In addition to that the user can create a list full of 0s with a certain length with the following syntax `a := list 4`, which will store a list of 4 zeros `("","a$0=0,a$1=0,a$2=0,a$3=0")`;
+- **New assignment operations**: we implemented the addition assignment "+=", subtraction assignment "-=" and product assignment "*=" operators to achieve the following syntax `"z := 0; for (i := 0; i <= 2; i += 1) do z := z + 1;"`. However, these operators don't work with lists.
