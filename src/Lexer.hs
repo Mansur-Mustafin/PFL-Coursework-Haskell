@@ -27,6 +27,7 @@ data Token
   | ForTok
   | OpenSqTok | CloseSqTok | CommaTok | DollarTok
   | AssignPlusTok | AssignSubTok | AssignProdTok
+  | ListTok
   deriving (Show, Eq) 
 
 {-|
@@ -82,5 +83,6 @@ getWordToken "else" = ElseTok
 getWordToken "for" = ForTok
 getWordToken "True" = BoolTok True
 getWordToken "False" = BoolTok False
+getWordToken "list" = ListTok
 getWordToken str@(first:rest) | isLower first = VarTok str
 getWordToken _ = error "Syntax error: Invalid symbol"

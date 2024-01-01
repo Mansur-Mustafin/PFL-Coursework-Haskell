@@ -160,6 +160,7 @@ buildData list = stm : buildData restTok
 getStatement :: [Token] -> (Stm, [Token])
 getStatement list@(WhileTok:rest) = getWhileStatement list                            -- while
 getStatement list@(IfTok:rest) = getIfStatement list                                  -- if 
+getStatement list@(VarTok var:AssignTok:ListTok:(IntTok _):SemiColonTok:rest) = getStoreDefaultList list -- v := list 4
 getStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = getStoreListStatement list  -- v := [
 getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list                -- x := 
 getStatement list@(VarTok var:DollarTok:rest) = getUpdateVectorStatement list         -- x$
@@ -241,6 +242,14 @@ getIncrMinusStatement list@(VarTok var:AssignSubTok:rest) =
 isBool :: [Token] -> Bool
 isBool (SemiColonTok:r) = False
 isBool (x:xs) = elem x [BoolTok True, BoolTok False, AndTok, BoolEqTok, IntEqTok, LeTok, NotTok] || isBool xs
+
+getStoreDefaultList :: [Token] -> (Stm, [Token])
+getStoreDefaultList (VarTok var:AssignTok:ListTok:(IntTok size):SemiColonTok:rest) = (ParenthStm (buildDefaultList var size), rest)
+
+buildDefaultList :: String -> Integer -> [Stm]
+buildDefaultList _ 0 = []
+buildDefaultList prefix index = StoreStmA varName (IntLit 0) : buildDefaultList prefix (index - 1)
+  where varName = prefix ++ "$" ++ show (index - 1)
 
 {-|
     Description 
