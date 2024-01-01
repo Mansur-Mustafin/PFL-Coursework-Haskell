@@ -21,25 +21,32 @@ import Test
 
 -- Part 1
 
--- | Defines the storage of the program, where the values of variables are kept
 {-|
     Defines the storage of the program, where the values of variables are kept.
     A variable can hold a boolean or integer value
 -}
 type State = (Map.Map String (Either Bool Integer))
 
--- | Defines the evaluation stack of the program
+{-|
+    Defines the evaluation stack of the program
+-}
 type Stack = (Pilha (Either Bool Integer))
 
--- | Builds an empty evaluation stack to be used throughout the program
+{-| 
+    Builds an empty evaluation stack to be used throughout the program
+-}
 createEmptyStack :: Stack
 createEmptyStack = Pilha.empty
 
--- | Builds an empty map to be used as the storage throughout the program
+{-|
+    Builds an empty map to be used as the storage throughout the program
+-}
 createEmptyState :: State
 createEmptyState = Map.empty
 
--- | Prints the left or right value associated with an Either data variable
+{-|
+    Prints the left or right value associated with an Either data variable
+-}
 showEither :: (Show a, Show b) => Either a b -> String
 showEither (Left bool) = show bool
 showEither (Right int) = show int
@@ -150,13 +157,17 @@ run (Loop c1 c2:code, stack, storage)
 parse :: String -> Program
 parse =  buildData . lexer
 
--- | Translates a list of token to the correct statements from the 'Compile.Stm', 'Compile.Aexp' and 'Compile.Bexp' data types
+{-|
+    Translates a list of token to the correct statements from the 'Compile.Stm', 'Compile.Aexp' and 'Compile.Bexp' data types
+-}
 buildData :: [Token] -> Program
 buildData [] = []
 buildData list = stm : buildData restTok
  where (stm, restTok) = getStatement list
 
--- | Builds a valid statement from the 'Compile.Stm' data type with the next tokens that appear in the token list given as input
+{-|
+    Builds a valid statement from the 'Compile.Stm' data type with the next tokens that appear in the token list given as input
+-}
 getStatement :: [Token] -> (Stm, [Token])
 getStatement list@(WhileTok:rest) = getWhileStatement list                            -- while
 getStatement list@(IfTok:rest) = getIfStatement list                                  -- if 
@@ -217,17 +228,31 @@ getStoreStatement (VarTok var:AssignTok:rest) =
            (aexp, SemiColonTok:restTokens) -> (StoreStmA var aexp, restTokens)
            _ -> error "Syntax error: Assign value.")
 
--- cases for +=
+{-|
+    Builds a valid 'Compile.StoreStmA' with the next tokens that appear in the token list given as input.
+    This effectively stores the sum between the value of the variable of the next token in the list and an 
+    arithmetic expression.
+-}
 getIncrPlusStatement :: [Token] -> (Stm, [Token])
 getIncrPlusStatement list@(VarTok var:AssignPlusTok:rest) = 
   case getAexp rest of
     (aexp, SemiColonTok:restTokens) -> (StoreStmA var (AddExp (VarLitA var) aexp), restTokens)
 
+{-|
+    Builds a valid 'Compile.StoreStmA' with the next tokens that appear in the token list given as input.
+    This effectively stores the subtraction between the value of the variable of the next token in the list 
+    and an arithmetic expression.
+-}
 getIncrMultStatement :: [Token] -> (Stm, [Token])
 getIncrMultStatement list@(VarTok var:AssignProdTok:rest) = 
   case getAexp rest of
     (aexp, SemiColonTok:restTokens) -> (StoreStmA var (MultExp (VarLitA var) aexp), restTokens)
 
+{-|
+    Builds a valid 'Compile.StoreStmA' with the next tokens that appear in the token list given as input.
+    This effectively stores the product between the value of the variable of the next token in the list and 
+    an arithmetic expression.
+-}
 getIncrMinusStatement :: [Token] -> (Stm, [Token])
 getIncrMinusStatement list@(VarTok var:AssignSubTok:rest) = 
   case getAexp rest of
@@ -243,34 +268,48 @@ isBool :: [Token] -> Bool
 isBool (SemiColonTok:r) = False
 isBool (x:xs) = elem x [BoolTok True, BoolTok False, AndTok, BoolEqTok, IntEqTok, LeTok, NotTok] || isBool xs
 
+{-|
+    Builds a valid 'Compile.ParenthStm' with the next tokens that appear in the token list given as input,
+    containing a sequence of statements to store a list full of zeros in a variable.
+-}
 getStoreDefaultList :: [Token] -> (Stm, [Token])
 getStoreDefaultList (VarTok var:AssignTok:ListTok:(IntTok size):SemiColonTok:rest) = (ParenthStm (buildDefaultList var size), rest)
 
+{-|
+    Builds the needed statements to store a list with a certain length given as input in a variable whose name
+    is also specified in the input.
+-}
 buildDefaultList :: String -> Integer -> [Stm]
 buildDefaultList _ 0 = []
 buildDefaultList prefix index = StoreStmA varName (IntLit 0) : buildDefaultList prefix (index - 1)
   where varName = prefix ++ "$" ++ show (index - 1)
 
 {-|
-    Description 
+    Builds a valid 'Compile.ParenthStm' with the next tokens that appear in the token list given as input,
+    containing a sequence of statements to store a list with integer values in a variable.
 -}
 getStoreListStatement :: [Token] -> (Stm, [Token])
 getStoreListStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = (ParenthStm stms, restTokens)
  where
   (stms, restTokens) = buildStoreStatements rest var 0
 
-
+{-|
+    Builds the needed statements to store a list with arithmetic expression in a variable whose name
+    is given as input.
+-}
 buildStoreStatements :: [Token] -> String -> Int -> ([Stm],[Token])
 buildStoreStatements tokens prefix index = 
   case getAexp tokens of
     (exp1, CloseSqTok:SemiColonTok:restTokens) -> ([StoreStmA varName exp1], restTokens)
     (exp1, CommaTok:restTokens1) -> let (stms, restTokens) = buildStoreStatements restTokens1 prefix (index + 1)
-                                        in (StoreStmA varName exp1 : stms , restTokens)
+                                    in (StoreStmA varName exp1 : stms , restTokens)
     _ -> error "Invalid list syntax"
   where
     varName = prefix ++ "$" ++ show index
 
--- | Builds a valid 'Compile.IfStm' with the next tokens that appear in the token list given as input.
+{-|
+    Builds a valid 'Compile.IfStm' with the next tokens that appear in the token list given as input.
+-}
 getIfStatement :: [Token] -> (Stm, [Token])
 getIfStatement (IfTok:rest) = (IfStm bexp thenStm elseStm, restTokens)
  where
@@ -291,6 +330,10 @@ getWhileStatement (WhileTok:rest) = (WhileStm bexp stm, restTokens)
   (bexp, DoTok:restTokens1) = getBexp rest
   (stm, restTokens) = getStatement restTokens1
 
+{-|
+    Builds a valid 'Compile.VarlitAVecorStore' to update the contents of a list with the next
+    tokens that appear in the token list given as input
+-}
 getUpdateVectorStatement :: [Token] -> (Stm, [Token])
 getUpdateVectorStatement list@(VarTok var:DollarTok:rest) = 
   case getAexp rest of 
@@ -309,7 +352,9 @@ getAexp tokens =
     Just (aExp, tokens) -> (aExp, tokens)
     _                   -> error "Syntax error: Invalid arithmetic expression"
 
--- | Builds a valid 'Compile.AddExp' or 'Compile.SubExp' with the next tokens that appear in the token list given as input.
+{-|
+    Builds a valid 'Compile.AddExp' or 'Compile.SubExp' with the next tokens that appear in the token list given as input.
+-}
 parseSumSub :: [Token] ->  Maybe (Aexp, [Token])
 parseSumSub tokens =
   case parseProd tokens of
@@ -323,7 +368,9 @@ parseSumSub tokens =
         Nothing                  -> Nothing
     result -> result
 
--- | Builds a valid 'Compile.MultExp' with the next tokens that appear in the token list given as input.
+{-|
+    Builds a valid 'Compile.MultExp' with the next tokens that appear in the token list given as input.
+-}
 parseProd :: [Token] ->  Maybe (Aexp, [Token])
 parseProd tokens =
   case parseIntVarPar tokens of
@@ -334,20 +381,20 @@ parseProd tokens =
     other -> other
 
 {-|
-    Builds a valid 'Compile.IntLit' or 'Compile.VarLitA' with the next tokens that appear in the token list given as input.
+    Builds the correct statement to either fetch a value from a list, or parse a variable or an integer
 
     This functions also handles the use of parenthesis in arithmetic expressions.
 -}
 parseIntVarPar :: [Token] -> Maybe (Aexp, [Token])
-parseIntVarPar (IntTok n: restTokens) = Just (IntLit n, restTokens)         -- 2
+parseIntVarPar (IntTok n: restTokens) = Just (IntLit n, restTokens)
 
 parseIntVarPar (VarTok v: DollarTok : VarTok index:tokens) = 
-  Just (VarlitAVecorFetch (VarLitA index) (v ++ "$"), tokens)                        -- vector$index
+  Just (VarlitAVecorFetch (VarLitA index) (v ++ "$"), tokens)
 
 parseIntVarPar (VarTok v: DollarTok : IntTok index:tokens) = 
-  Just (VarlitAVecorFetch (IntLit index) (v ++ "$"), tokens)                         -- vector$2
+  Just (VarlitAVecorFetch (IntLit index) (v ++ "$"), tokens)
 
-parseIntVarPar (VarTok v: DollarTok : OpenTok : tokens) = case getAexp tokens of      -- vector$Aexp
+parseIntVarPar (VarTok v: DollarTok : OpenTok : tokens) = case getAexp tokens of 
   (aexp, CloseTok : restTokens) -> Just (VarlitAVecorFetch aexp (v ++ "$"), restTokens)
   _ -> Nothing
 
@@ -370,7 +417,9 @@ getBexp tokens =
     _                   -> error "Syntax error: Boolean expression."
 
 
--- | Builds a valid 'Compile.AndExp' with the next tokens that appear in the token list given as input.
+{-|
+    Builds a valid 'Compile.AndExp' with the next tokens that appear in the token list given as input.
+-}
 parseAnd :: [Token] ->  Maybe (Bexp, [Token])
 parseAnd tokens =
   case parseBoolEq tokens of
@@ -381,7 +430,9 @@ parseAnd tokens =
     result -> result
 
 
--- | Builds a valid 'Compile.EquExpBool' with the next tokens that appear in the token list given as input.
+{-|
+    Builds a valid 'Compile.EquExpBool' with the next tokens that appear in the token list given as input.
+-}
 parseBoolEq :: [Token] ->  Maybe (Bexp, [Token])
 parseBoolEq tokens =
   case parseNot tokens of
@@ -410,8 +461,9 @@ parseNot tokens =
       Just (exp2, restTokens2) -> Just (exp2, restTokens2)
       Nothing -> Nothing
 
-
--- | Builds a valid 'Compile.EquExpInt' or 'Compile.LeExp' with the next tokens that appear in the token list given as input.
+{-|
+    Builds a valid 'Compile.EquExpInt' or 'Compile.LeExp' with the next tokens that appear in the token list given as input.
+-}
 parseIntEqLe :: [Token] ->  Maybe (Bexp, [Token])
 parseIntEqLe tokens =
   case parseSumSub tokens of
