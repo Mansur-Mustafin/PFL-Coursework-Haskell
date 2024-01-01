@@ -149,6 +149,7 @@ run (Branch c1 c2:code, stack, storage) =
 run (Loop c1 c2:code, stack, storage)
  = run (c1 ++ [Branch (c2 ++ [Loop c1 c2]) [Noop]] ++ code, stack, storage)
 
+run _ = error "Run-time error"
 
 {-|
     Parses a string that represents a program, tokenizing it and translating it into
@@ -181,7 +182,7 @@ getStatement list@(VarTok var:AssignProdTok:rest) = getIncrMultStatement list   
 getStatement list@(ForTok:rest) = getForStatement list                                -- for 
 getStatement list@(OpenTok:rest) = (stm, rest)                                        -- (
   where (stm, SemiColonTok:rest) = getParenthStatement list                           -- TODO se nao tiver ; ele vai dar erro de haskell
-getStatement _ = error "Invalid token used as the beginning of new statement"
+getStatement _ = error "Run-time error"
 
 {-|
     Builds a valid 'Compile.WhileStm' with the next tokens that appear in the token list given as input
@@ -213,7 +214,7 @@ getParenthStatement (OpenTok:rest) = (ParenthStm stms, restTokens)
 -}
 getStatement'  :: [Token] -> ([Stm], [Token])
 getStatement' l@(CloseTok:rest) = ([], rest)
-getStatement' [] = error "Syntax error: unmatch parentheses."
+getStatement' [] = error "Run-time error"
 getStatement' l = (fst (getStatement l) : stms , rest)
  where (stms, rest) =  getStatement' (snd (getStatement l))
 
@@ -265,6 +266,7 @@ getIncrMinusStatement list@(VarTok var:AssignSubTok:rest) =
     is used by 'getStoreStatement' to verify if a store statement assign a boolean or integer value to a certain variable.
 -}
 isBool :: [Token] -> Bool
+isBool [] = error "Run-time error"
 isBool (SemiColonTok:r) = False
 isBool (x:xs) = elem x [BoolTok True, BoolTok False, AndTok, BoolEqTok, IntEqTok, LeTok, NotTok] || isBool xs
 
@@ -303,7 +305,7 @@ buildStoreStatements tokens prefix index =
     (exp1, CloseSqTok:SemiColonTok:restTokens) -> ([StoreStmA varName exp1], restTokens)
     (exp1, CommaTok:restTokens1) -> let (stms, restTokens) = buildStoreStatements restTokens1 prefix (index + 1)
                                     in (StoreStmA varName exp1 : stms , restTokens)
-    _ -> error "Invalid list syntax"
+    _ -> error "Run-time error"
   where
     varName = prefix ++ "$" ++ show index
 
@@ -350,7 +352,7 @@ getAexp :: [Token] -> (Aexp, [Token])
 getAexp tokens =
   case parseSumSub tokens of
     Just (aExp, tokens) -> (aExp, tokens)
-    _                   -> error "Syntax error: Invalid arithmetic expression"
+    _                   -> error "Run-time error"
 
 {-|
     Builds a valid 'Compile.AddExp' or 'Compile.SubExp' with the next tokens that appear in the token list given as input.
@@ -414,7 +416,7 @@ getBexp :: [Token] -> (Bexp, [Token])
 getBexp tokens =
   case parseAnd tokens of
     Just (bExp, tokens) -> (bExp, tokens)
-    _                   -> error "Syntax error: Boolean expression."
+    _                   -> error "Run-time error"
 
 
 {-|
