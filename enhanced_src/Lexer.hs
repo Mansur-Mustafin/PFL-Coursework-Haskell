@@ -17,18 +17,50 @@ import Data.Char (isDigit, isLetter, isSpace, isLower, isUpper, digitToInt)
     followed by the suffix "Tok"
 -}
 data Token
-  = PlusTok | MinusTok | TimesTok
-  | OpenTok | CloseTok | SemiColonTok
-  | AndTok | BoolEqTok | IntEqTok | LeTok | NotTok
-  | AssignTok
-  | WhileTok | DoTok
-  | IfTok | ThenTok | ElseTok
-  | IntTok Integer | VarTok String | BoolTok Bool
-  | ForTok
-  | OpenSqTok | CloseSqTok | CommaTok | DollarTok
-  | AssignPlusTok | AssignSubTok | AssignProdTok
-  | ListTok
-  deriving (Show, Eq) 
+  -- Arithmetic Operators
+  = PlusTok         -- ^ Represents the '+' operator for addition.
+  | MinusTok        -- ^ Represents the '-' operator for subtraction.
+  | TimesTok        -- ^ Represents the '*' operator for multiplication.
+
+  -- Parentheses and Separators
+  | OpenTok         -- ^ Represents the opening parenthesis '(' for grouping expressions.
+  | CloseTok        -- ^ Represents the closing parenthesis ')' for grouping expressions.
+  | SemiColonTok    -- ^ Represents the ';' symbol used as end of statement.
+  | CommaTok        -- ^ Represents the ',' symbol used as a list element separator.
+
+  -- Logical Operators and Comparators
+  | AndTok          -- ^ Represents the logical 'and' operation.
+  | NotTok          -- ^ Represents the logical 'not' operation.
+  | BoolEqTok       -- ^ Represents the boolean equality '=' operator.
+  | IntEqTok        -- ^ Represents the integer equality '==' operator.
+  | LeTok           -- ^ Represents the less than or equal to '<=' comparator.
+
+  -- Assignment and Control Structures
+  | AssignTok       -- ^ Represents the assignment ':=' operator.
+  | WhileTok        -- ^ Represents the 'while' loop construct.
+  | DoTok           -- ^ Represents the 'do' statement in loops.
+  | IfTok           -- ^ Represents the 'if' conditional construct.
+  | ThenTok         -- ^ Represents the 'then' branch in a conditional.
+  | ElseTok         -- ^ Represents the 'else' branch in a conditional.
+  | ForTok          -- ^ Represents the 'for' loop construct.
+
+  -- Data Types and Literals
+  | IntTok Integer   -- ^ Represents integer literals, e.g., 123.
+  | VarTok String    -- ^ Represents variable names, e.g., "my_var".
+  | BoolTok Bool     -- ^ Represents boolean constants, True or False.
+
+  -- Additional Syntactic for lists
+  | OpenSqTok       -- ^ Represents the opening square bracket '[' for list syntax.
+  | CloseSqTok      -- ^ Represents the closing square bracket ']' for list syntax.
+  | DollarTok       -- ^ Represents the '$' symbol for list indexing.
+  | ListTok         -- ^ Represents the 'list' keyword for construction.
+
+  -- Extended Assignment Operators
+  | AssignPlusTok   -- ^ Represents the '+=' compound assignment operator.
+  | AssignSubTok    -- ^ Represents the '-=' compound assignment operator.
+  | AssignProdTok   -- ^ Represents the '*=' compound assignment operator.
+
+  deriving (Show, Eq)
 
 {-|
     Translates a program in a string to a list of corresponding valid tokens. 

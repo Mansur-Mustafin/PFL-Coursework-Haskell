@@ -172,12 +172,12 @@ getStatement list@(VarTok var:AssignTok:ListTok:(IntTok _):SemiColonTok:rest) = 
 getStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = getStoreListStatement list  -- v := [
 getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list                -- x := 
 getStatement list@(VarTok var:DollarTok:rest) = getUpdateVectorStatement list         -- x$
-getStatement list@(VarTok var:AssignPlusTok:rest) = getIncrPlusStatement list     -- x +=  
-getStatement list@(VarTok var:AssignSubTok:rest) = getIncrMinusStatement list   -- x -= 
-getStatement list@(VarTok var:AssignProdTok:rest) = getIncrMultStatement list    -- x *= 
+getStatement list@(VarTok var:AssignPlusTok:rest) = getIncrPlusStatement list         -- x +=  
+getStatement list@(VarTok var:AssignSubTok:rest) = getIncrMinusStatement list         -- x -= 
+getStatement list@(VarTok var:AssignProdTok:rest) = getIncrMultStatement list         -- x *= 
 getStatement list@(ForTok:rest) = getForStatement list                                -- for 
 getStatement list@(OpenTok:rest) = (stm, rest)                                        -- (
-  where (stm, SemiColonTok:rest) = getParenthStatement list                           -- TODO se nao tiver ; ele vai dar erro de haskell
+  where (stm, SemiColonTok:rest) = getParenthStatement list                           
 getStatement _ = error "Run-time error"
 
 {-|
