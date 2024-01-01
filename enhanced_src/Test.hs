@@ -40,7 +40,10 @@ testCasesParser = [
     ( "if not (not True) then x :=1; else x:=2;", ("", "x=1")),
     ( "x := 2; x += 2 + 3 * 2;", ("", "x=10")),
     ( "x := 2; x -= 2 + 3 * 2;", ("", "x=-6")),
-    ( "x := 2; x *= 2 + 3 * 2;", ("", "x=16"))
+    ( "x := 2; x *= 2 + 3 * 2;", ("", "x=16")),
+    ( "x := 1; y := 2 + (3 * 4); if x <= y and True then (z := 5; if not z <= x then a := 3; else a := 4;) else while x <= 3 do (x := x + 1; y := y - 1;);", ("", "a=3,x=1,y=14,z=5")),
+    ( "if ((not not True and not 3 <= 4) = False) then x := 1; else x := 2;"  , ("", "x=1")),
+    ( "if (not True = False) then x := 1; else x := 2;"  , ("", "x=1"))
     ]
 
 runTest :: (Show b, Eq b) => (Int, (c, b)) -> (c -> b) -> IO ()
