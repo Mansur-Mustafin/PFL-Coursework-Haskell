@@ -71,11 +71,22 @@ runTests (test:rest) testFunction = do
 
 
 program1 :: String
-program1 = " list := [1,2,3,4,5,6,7,8,9,10];                    \
+program1 = " my_list := [1,2,3,4,5,6,7,8,9,10];                    \
           \  sum := 0;                                          \
           \  for (index := 0; index <= 9; index += 1;)          \
           \                                                     \
           \  do(                                                \
-          \      sum += list$index;                             \
+          \      sum += my_list$index;                             \
           \  );"
 
+program2 :: String
+program2 = " my_list := [1,2,3,6,4,5];                          \
+          \                                                     \
+          \  isOrdered := True;                                 \
+          \  for (index := 0; index <= 4; index += 1;)          \
+          \                                                     \
+          \  do(                                                \
+          \      if (not my_list$index <= my_list$(index + 1))       \
+          \       then isOrdered := False;                      \
+          \      else ();                                       \
+          \  );"
