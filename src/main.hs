@@ -12,7 +12,8 @@
 module Main where
 
 import Pilha
-import Map
+import qualified AVLMap as Map
+-- import qualified Map
 import Lexer
 import Compile
 import Test
@@ -120,12 +121,21 @@ run (Neg:code, stack, storage) =
     _         -> error "Run-time error"
 
 run (Fetch key:code, stack, storage) =
-  case Map.find key storage of
-    Just value -> run (code, push value stack, storage)
-    Nothing    -> error "Run-time error"
+  if last key == '$' 
+    then case top stack of
+      Right index -> fetchValue (key ++ show index) (pop stack)
+      _ -> error "Run-time error"
+  else fetchValue key stack
+  where fetchValue k stk = case Map.find k storage of
+                            Just value -> run (code, push value stk, storage)
+                            Nothing -> error "Run-time error"
 
-run (Store key:code, stack, storage)
- = run (code, pop stack, Map.insert key (top stack) storage)
+run (Store key:code, stack, storage) =
+  if last key == '$'
+    then case top stack of
+      Right index -> run (code, pop . pop $ stack, Map.insert (key++show index) (top . pop $ stack) storage)
+      _ -> error "Run-time error"
+  else run (code, pop stack, Map.insert key (top stack) storage)
 
 run (Noop:code, stack, storage) = run (code, stack, storage)
 
@@ -159,29 +169,51 @@ buildData list = stm : buildData restTok
 getStatement :: [Token] -> (Stm, [Token])
 getStatement list@(WhileTok:rest) = getWhileStatement list                            -- while
 getStatement list@(IfTok:rest) = getIfStatement list                                  -- if 
+getStatement list@(VarTok var:AssignTok:ListTok:(IntTok _):SemiColonTok:rest) = getStoreDefaultList list -- v := list 4
+getStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = getStoreListStatement list  -- v := [
 getStatement list@(VarTok var:AssignTok:rest) = getStoreStatement list                -- x := 
+getStatement list@(VarTok var:DollarTok:rest) = getUpdateVectorStatement list         -- x$
+getStatement list@(VarTok var:AssignPlusTok:rest) = getIncrPlusStatement list         -- x +=  
+getStatement list@(VarTok var:AssignSubTok:rest) = getIncrMinusStatement list         -- x -= 
+getStatement list@(VarTok var:AssignProdTok:rest) = getIncrMultStatement list         -- x *= 
+getStatement list@(ForTok:rest) = getForStatement list                                -- for 
 getStatement list@(OpenTok:rest) = (stm, rest)                                        -- (
-  where (stm, SemiColonTok:rest) = getParenthStatement list
+  where (stm, SemiColonTok:rest) = getParenthStatement list                           
 getStatement _ = error "Run-time error"
+
+{-|
+    Builds a valid 'Compile.WhileStm' with the next tokens that appear in the token list given as input
+
+    This function handles the casa where the 'Compile.WhileStm' is built from a 'Lexer.ForTok'
+-}
+getForStatement :: [Token] -> (Stm, [Token])
+getForStatement (ForTok:OpenTok:rest) = (ParenthStm [storeStm, WhileStm bexp (ParenthStm [stms, stepStm])], restTokens)
+  where (storeStm, restTokens1) = getStoreStatement rest
+        (bexp, SemiColonTok:restTokens2) = getBexp restTokens1
+        (stepStm, CloseTok:DoTok:restTokens3) = case restTokens2 of
+            (VarTok var:AssignTok:rest) -> getStoreStatement restTokens2
+            (VarTok var:AssignPlusTok:rest) -> getIncrPlusStatement restTokens2
+            (VarTok var:AssignSubTok:rest) -> getIncrMinusStatement restTokens2
+            (VarTok var:AssignProdTok:rest) ->  getIncrMultStatement restTokens2
+        (stms, restTokens) = getStatement restTokens3
 
 {-|
     Builds a valid 'Compile.ParenthStm' with the next tokens that appear in the token list given as input,
     verifying that the next token that is parsed in a 'Lexer.OpenTok'
 -}
 getParenthStatement :: [Token] -> (Stm, [Token])
-getParenthStatement (OpenTok:rest) = 
-  (ParenthStm stms, restTokens)
- where (stms, restTokens) = buildParenthStatement rest
+getParenthStatement (OpenTok:rest) = (ParenthStm stms, restTokens)
+ where (stms, restTokens) = getStatement' rest
 
 {-|
     Builds a list of valid statements with the next tokens that appear in the token list given as input, until
     a 'Lexer.CloseTok' is found. This fetches all statements that are between a pair of correctly matched parentheses.
 -}
-buildParenthStatement  :: [Token] -> ([Stm], [Token])
-buildParenthStatement (CloseTok:rest) = ([], rest)
-buildParenthStatement [] = error "Run-time error"
-buildParenthStatement l = (fst (getStatement l) : stms , rest)
- where (stms, rest) =  buildParenthStatement (snd (getStatement l))
+getStatement'  :: [Token] -> ([Stm], [Token])
+getStatement' l@(CloseTok:rest) = ([], rest)
+getStatement' [] = error "Run-time error"
+getStatement' l = (fst (getStatement l) : stms , rest)
+ where (stms, rest) =  getStatement' (snd (getStatement l))
 
 {-|
     Builds a valid 'Compile.StoreStmA' or 'Compile.StoreStmB' with the next tokens that appear in the token list given as input.
@@ -194,6 +226,36 @@ getStoreStatement (VarTok var:AssignTok:rest) =
            (aexp, SemiColonTok:restTokens) -> (StoreStmA var aexp, restTokens)
            _ -> error "Run-time error")
 
+{-|
+    Builds a valid 'Compile.StoreStmA' with the next tokens that appear in the token list given as input.
+    This effectively stores the sum between the value of the variable of the next token in the list and an 
+    arithmetic expression.
+-}
+getIncrPlusStatement :: [Token] -> (Stm, [Token])
+getIncrPlusStatement list@(VarTok var:AssignPlusTok:rest) = 
+  case getAexp rest of
+    (aexp, SemiColonTok:restTokens) -> (StoreStmA var (AddExp (VarLitA var) aexp), restTokens)
+
+{-|
+    Builds a valid 'Compile.StoreStmA' with the next tokens that appear in the token list given as input.
+    This effectively stores the subtraction between the value of the variable of the next token in the list 
+    and an arithmetic expression.
+-}
+getIncrMultStatement :: [Token] -> (Stm, [Token])
+getIncrMultStatement list@(VarTok var:AssignProdTok:rest) = 
+  case getAexp rest of
+    (aexp, SemiColonTok:restTokens) -> (StoreStmA var (MultExp (VarLitA var) aexp), restTokens)
+
+{-|
+    Builds a valid 'Compile.StoreStmA' with the next tokens that appear in the token list given as input.
+    This effectively stores the product between the value of the variable of the next token in the list and 
+    an arithmetic expression.
+-}
+getIncrMinusStatement :: [Token] -> (Stm, [Token])
+getIncrMinusStatement list@(VarTok var:AssignSubTok:rest) = 
+  case getAexp rest of
+    (aexp, SemiColonTok:restTokens) -> (StoreStmA var (SubExp (VarLitA var) aexp), restTokens)
+
 
 {-|
     Verifies if a token that represents a boolean constant or a boolean operator is found before the next
@@ -204,6 +266,45 @@ isBool :: [Token] -> Bool
 isBool [] = error "Run-time error"
 isBool (SemiColonTok:r) = False
 isBool (x:xs) = elem x [BoolTok True, BoolTok False, AndTok, BoolEqTok, IntEqTok, LeTok, NotTok] || isBool xs
+
+{-|
+    Builds a valid 'Compile.ParenthStm' with the next tokens that appear in the token list given as input,
+    containing a sequence of statements to store a list full of zeros in a variable.
+-}
+getStoreDefaultList :: [Token] -> (Stm, [Token])
+getStoreDefaultList (VarTok var:AssignTok:ListTok:(IntTok size):SemiColonTok:rest) = (ParenthStm (buildDefaultList var size), rest)
+
+{-|
+    Builds the needed statements to store a list with a certain length given as input in a variable whose name
+    is also specified in the input.
+-}
+buildDefaultList :: String -> Integer -> [Stm]
+buildDefaultList _ 0 = []
+buildDefaultList prefix index = StoreStmA varName (IntLit 0) : buildDefaultList prefix (index - 1)
+  where varName = prefix ++ "$" ++ show (index - 1)
+
+{-|
+    Builds a valid 'Compile.ParenthStm' with the next tokens that appear in the token list given as input,
+    containing a sequence of statements to store a list with integer values in a variable.
+-}
+getStoreListStatement :: [Token] -> (Stm, [Token])
+getStoreListStatement list@(VarTok var:AssignTok:OpenSqTok:rest) = (ParenthStm stms, restTokens)
+ where
+  (stms, restTokens) = buildStoreStatements rest var 0
+
+{-|
+    Builds the needed statements to store a list with arithmetic expression in a variable whose name
+    is given as input.
+-}
+buildStoreStatements :: [Token] -> String -> Int -> ([Stm],[Token])
+buildStoreStatements tokens prefix index = 
+  case getAexp tokens of
+    (exp1, CloseSqTok:SemiColonTok:restTokens) -> ([StoreStmA varName exp1], restTokens)
+    (exp1, CommaTok:restTokens1) -> let (stms, restTokens) = buildStoreStatements restTokens1 prefix (index + 1)
+                                    in (StoreStmA varName exp1 : stms , restTokens)
+    _ -> error "Run-time error"
+  where
+    varName = prefix ++ "$" ++ show index
 
 {-|
     Builds a valid 'Compile.IfStm' with the next tokens that appear in the token list given as input.
@@ -227,6 +328,17 @@ getWhileStatement (WhileTok:rest) = (WhileStm bexp stm, restTokens)
  where
   (bexp, DoTok:restTokens1) = getBexp rest
   (stm, restTokens) = getStatement restTokens1
+
+{-|
+    Builds a valid 'Compile.VarlitAVectorStore' to update the contents of a list with the next
+    tokens that appear in the token list given as input
+-}
+getUpdateVectorStatement :: [Token] -> (Stm, [Token])
+getUpdateVectorStatement list@(VarTok var:DollarTok:rest) = 
+  case getAexp rest of 
+    (index, AssignTok : restTokens1) -> 
+      case getAexp restTokens1 of
+        (valor, SemiColonTok: restTokens) -> (VarlitAVectorStore valor index (var++"$"), restTokens)
 
 {-|
     Builds a valid 'Compile.Aexp' with the next tokens that appear in the token list given as input.
@@ -268,16 +380,27 @@ parseProd tokens =
     other -> other
 
 {-|
-    Builds the correct statement to either parse a variable or an integer.
+    Builds the correct statement to either fetch a value from a list, or parse a variable or an integer
 
     This functions also handles the use of parenthesis in arithmetic expressions.
 -}
 parseIntVarPar :: [Token] -> Maybe (Aexp, [Token])
 parseIntVarPar (IntTok n: restTokens) = Just (IntLit n, restTokens)
-parseIntVarPar (VarTok v: restTokens) = Just (VarLitA v, restTokens)
-parseIntVarPar (OpenTok:restTokens1) =
-  case parseSumSub restTokens1 of
-    Just (exp1, CloseTok:restTokens2) -> Just (exp1, restTokens2)
+
+parseIntVarPar (VarTok v: DollarTok : VarTok index:tokens) = 
+  Just (VarlitAVectorFetch (VarLitA index) (v ++ "$"), tokens)
+
+parseIntVarPar (VarTok v: DollarTok : IntTok index:tokens) = 
+  Just (VarlitAVectorFetch (IntLit index) (v ++ "$"), tokens)
+
+parseIntVarPar (VarTok v: DollarTok : OpenTok : tokens) = case getAexp tokens of 
+  (aexp, CloseTok : restTokens) -> Just (VarlitAVectorFetch aexp (v ++ "$"), restTokens)
+  _ -> Nothing
+
+parseIntVarPar (VarTok v: tokens) = Just (VarLitA v, tokens)
+parseIntVarPar (OpenTok:tokens) =
+  case parseSumSub tokens of
+    Just (exp1, CloseTok:restTokens1) -> Just (exp1, restTokens1)
     _ -> Nothing
 parseIntVarPar _ = Nothing
 
@@ -367,6 +490,7 @@ parseBoolVarPars (OpenTok:restTokens1) =
     Just (exp1, CloseTok:restTokens2) -> Just (exp1, restTokens2)
     _ -> Nothing
 parseBoolVarPars _ = Nothing
+
 
 
 

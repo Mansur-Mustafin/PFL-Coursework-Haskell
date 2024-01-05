@@ -20,6 +20,7 @@ data Inst =
 data Aexp
   = IntLit Integer -- ^ Represents an integer literal, e.g. 1
   | VarLitA String -- ^ Represents a variable in an arithmetic expression, e.g. 1 + x
+  | VarlitAVectorFetch Aexp String -- ^ Represents fetching a value from a vector
   | AddExp Aexp Aexp -- ^ Represents an addition between two arithmetic expressions, e.g. 1 + 2
   | SubExp Aexp Aexp -- ^ Represents a subtraction between two arithmetic expressions, e.g. 1 - 2
   | MultExp Aexp Aexp -- ^ Represents a product between two arithmetic expressions, e.g. 1 * 2
@@ -39,6 +40,7 @@ data Bexp
 -- | Data type that holds all valid program statements
 data Stm
   = StoreStmA String Aexp -- ^ Represents an integer assignment, e.g. x := 1 + 2
+  | VarlitAVectorStore Aexp Aexp String -- ^ Represents storing a value from a vector
   | StoreStmB String Bexp -- ^ Represents a boolean assignment, e.g. x := True and False
   | ParenthStm [Stm] -- ^ Represents a chain of statements between parentheses, e.g. (x := 2; y := True and False)
   | IfStm Bexp Stm Stm -- ^ Represents an if-then-else statement, e.g. if True then x := 2 else x := 3
@@ -58,6 +60,7 @@ compile prog = concatMap compileStm prog
 -- | Translates a statement from 'Stm' into the respective valid list of instructions
 compileStm :: Stm -> Code
 compileStm (StoreStmA var aexp) = compA aexp ++ [Store var]
+compileStm (VarlitAVectorStore valor index var) = compA valor ++ compA index ++ [Store var]
 compileStm (StoreStmB var bexp) = compB bexp ++ [Store var]
 compileStm (ParenthStm stms) = compile stms
 compileStm (IfStm bexp stm1 stm2) = compB bexp ++ [Branch (compileStm stm1) (compileStm stm2)]
@@ -70,6 +73,7 @@ compA (VarLitA var) = [Fetch var]
 compA (AddExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Add]
 compA (SubExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Sub]
 compA (MultExp aexp1 aexp2) = compA aexp2 ++ compA aexp1 ++ [Mult]
+compA (VarlitAVectorFetch aexp var) = compA aexp ++ [Fetch var]
 
 -- | Translates a boolean expression from 'Bexp' into the respective valid list of instructions
 compB :: Bexp -> Code

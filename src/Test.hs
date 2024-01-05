@@ -1,6 +1,7 @@
 module Test where
 
 import Compile
+import GHC.Arr (done)
 
 testCasesAssembler :: [(Code, (String, String))]
 testCasesAssembler = [
@@ -16,7 +17,8 @@ testCasesAssembler = [
     ([Push 5,Store "x",Push 1,Fetch "x",Sub,Store "x"], ("","x=4")),
     ([Push 10, Store "i", Push 1, Store "fact", Loop [Push 1, Fetch "i", Equ, Neg] [Fetch "i", Fetch "fact", Mult, Store "fact", Push 1, Fetch "i", Sub, Store "i"]], ("","fact=3628800,i=1")),
     ([Push 10,Push 2,Tru,Branch [Add] [Sub]], ("12","")),
-    ([Push 10,Push 2,Fals,Branch [Add] [Sub]], ("-8",""))
+    ([Push 10,Push 2,Fals,Branch [Add] [Sub]], ("-8","")),
+    ([Push 123, Store "vector$2", Push 2, Fetch "vector$"], ("123","vector$2=123"))
     ]
 
 testCasesParser :: [(String, (String, String))]
@@ -36,7 +38,9 @@ testCasesParser = [
     ( "x := 12; y := 10; if (True) then ( x := 5; if (True) then y := 5; else z := 10;) else z := 13;", ("","x=5,y=5")),
     ( "if not not True then x :=1; else x:=2;", ("", "x=1")),
     ( "if not (not True) then x :=1; else x:=2;", ("", "x=1")),
-    ( "if False then x := 1; else (if False then x := 2; else x:= 3;);"  , ("", "x=3")),
+    ( "x := 2; x += 2 + 3 * 2;", ("", "x=10")),
+    ( "x := 2; x -= 2 + 3 * 2;", ("", "x=-6")),
+    ( "x := 2; x *= 2 + 3 * 2;", ("", "x=16")),
     ( "x := 1; y := 2 + (3 * 4); if x <= y and True then (z := 5; if not z <= x then a := 3; else a := 4;) else while x <= 3 do (x := x + 1; y := y - 1;);", ("", "a=3,x=1,y=14,z=5")),
     ( "if ((not not True and not 3 <= 4) = False) then x := 1; else x := 2;"  , ("", "x=1")),
     ( "if (not True = False) then x := 1; else x := 2;"  , ("", "x=1"))
@@ -63,3 +67,24 @@ runTests (test:rest) testFunction = do
 -- testAssembler [Tru,Fals,Neg,Add]                       "Run-time error"
 -- testAssembler [Tru,Push 2,Equ]                         "Run-time error"
 
+
+program1 :: String
+program1 = " my_list := [1,2,3,4,5,6,7,8,9,10];                    \
+          \  sum := 0;                                          \
+          \  for (index := 0; index <= 9; index += 1;)          \
+          \                                                     \
+          \  do(                                                \
+          \      sum += my_list$index;                             \
+          \  );"
+
+program2 :: String
+program2 = " my_list := [1,2,3,6,4,5];                          \
+          \                                                     \
+          \  isOrdered := True;                                 \
+          \  for (index := 0; index <= 4; index += 1;)          \
+          \                                                     \
+          \  do(                                                \
+          \      if (not my_list$index <= my_list$(index + 1))       \
+          \       then isOrdered := False;                      \
+          \      else ();                                       \
+          \  );"
