@@ -4,6 +4,7 @@
 * Members:
   * [Daniel dos Santos Ferreira](https://github.com/dsantosferreira) - up202108771 (50%)
   * [Mansur Mustafin](https://github.com/Mansur-Mustafin) - up202102355 (50%)
+* Grade: 19.8 / 20
 
 ## Problem description
 
@@ -11,6 +12,37 @@ This project was divided in two parts:
 
 - **Part 1 (low-level machine)** - our goal was to implement a low-level machine with a configuration of the form (*c*, *e*, *s*), where *c* is a list of defined instructions to run, *e* is the evaluation stack which holds integer and boolean values to be evaluated, and *s* is the machine's storage which stores integer and boolean values which are identified by the variable's name;
 - **Part 2 (parser and compiler)** - the objective of this part was to implement a parser and compiler capable of translating strings containing a program written in a small imperative programming language that followed a defined set of rules, into a set of instructions that could be run by the low-level machine developed in the first part of the project.
+
+## Program examples:
+
+* Sum of the list:
+```haskell
+program1 :: String
+program1 = " my_list := [1,2,3,4,5,6,7,8,9,10];                 \
+          \  sum := 0;                                          \
+          \  for (index := 0; index <= 9; index += 1;)          \
+          \                                                     \
+          \  do(                                                \
+          \      sum += my_list$index;                          \
+          \  );"
+```
+Output : `sum=55`
+
+* Check if list is sorted:
+```haskell
+program2 :: String
+program2 = " my_list := [1,2,3,6,4,5];                          \
+          \                                                     \
+          \  isOrdered := True;                                 \
+          \  for (index := 0; index <= 4; index += 1;)          \
+          \                                                     \
+          \  do(                                                \
+          \      if (not my_list$index <= my_list$(index + 1))  \
+          \       then isOrdered := False;                      \
+          \      else ();                                       \
+          \  );"
+```
+Output : `isOrdered=False`
 
 ## Our solution
 
@@ -61,36 +93,7 @@ In this project, we decided to implement a set of extra features which can be fo
 - **List syntax**: we also allow users to use lists with integers in our program `a := [1, 1+1, 3, 4]; b := a$1 + a$2 + 5;`. For example, the first element in the list is "a$0". In this example the evaluation stack will have the following contents `("","a$0=1,a$1=2,a$2=3,a$3=4,b=10")`. We represented a list in the machine's storage as different variables with the following name "variable_name$index". A value from the list can be accessed by using the variable's name followed by a dollar sigh '$' and the index of the value, where index could be any aritmetic expression. In addition to that the user can create a list full of 0s with a certain length with the following syntax `a := list 4`, which will store a list of 4 zeros `("","a$0=0,a$1=0,a$2=0,a$3=0")`;
 - **New assignment operations**: we implemented the addition assignment "+=", subtraction assignment "-=" and product assignment "*=" operators to achieve the following syntax `"z := 0; for (i := 0; i <= 2; i += 1) do z := z + 1;"`. However, these operators don't work with a list element on left side.
 
-## Program examples:
 
-* Sum of the list:
-```haskell
-program1 :: String
-program1 = " my_list := [1,2,3,4,5,6,7,8,9,10];                 \
-          \  sum := 0;                                          \
-          \  for (index := 0; index <= 9; index += 1;)          \
-          \                                                     \
-          \  do(                                                \
-          \      sum += my_list$index;                          \
-          \  );"
-```
-Output : `sum=55`
-
-* Check if list is sorted:
-```haskell
-program2 :: String
-program2 = " my_list := [1,2,3,6,4,5];                          \
-          \                                                     \
-          \  isOrdered := True;                                 \
-          \  for (index := 0; index <= 4; index += 1;)          \
-          \                                                     \
-          \  do(                                                \
-          \      if (not my_list$index <= my_list$(index + 1))  \
-          \       then isOrdered := False;                      \
-          \      else ();                                       \
-          \  );"
-```
-Output : `isOrdered=False`
 
 
 ## Documentation
